@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AHU Studio</title>
+<meta name="description" content="Klima santrali kapak yerleşimi, DXF ve Excel üretimi">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234d8dff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="stil.css">
+<style>
+  #menu{position:fixed;right:12px;bottom:12px;z-index:6;display:flex;gap:6px;opacity:.35;transition:opacity .15s}
+  #menu:hover,#menu:focus-within{opacity:1}
+  #menu a,#menu button{background:var(--bg-2);border:1px solid var(--line-2);color:var(--t-2);border-radius:99px;
+    padding:5px 11px;font:inherit;font-size:12px;cursor:pointer;text-decoration:none}
+  #menu a:hover,#menu button:hover{color:var(--t-1);background:var(--bg-3)}
+  .yukleniyor{display:flex;align-items:center;gap:10px;color:var(--t-2);font-size:13px;margin-top:18px}
+  .yukleniyor i{width:16px;height:16px;border:2px solid var(--line-3);border-top-color:var(--accent);border-radius:50%;animation:don .8s linear infinite}
+  @keyframes don{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="sahne" id="giris_sahne">
+  <div class="kart">
+    <div class="marka"><span class="isaret"></span>AHU Studio <span class="alt">· Cenk Altınay</span></div>
+
+    <!-- GİRİŞ / KAYIT -->
+    <section id="bolum_form">
+      <h1 id="baslik">Giriş yap</h1>
+      <p class="aciklama" id="aciklama">Lisanslı hesabınla devam et.</p>
+      <div class="sekmeler" role="tablist">
+        <button type="button" class="aktif" data-kip="giris">Giriş</button>
+        <button type="button" data-kip="kayit">Kayıt ol</button>
+      </div>
+      <form id="form" autocomplete="on">
+        <div id="kayit_alanlari" hidden>
+          <label for="ad">Ad Soyad</label>
+          <input id="ad" autocomplete="name">
+          <label for="firma">Firma</label>
+          <input id="firma" autocomplete="organization">
+        </div>
+        <label for="eposta">E-posta</label>
+        <input id="eposta" type="email" autocomplete="email" required>
+        <label for="sifre">Şifre</label>
+        <input id="sifre" type="password" autocomplete="current-password" required minlength="8">
+        <button class="dugme tam" id="gonder" type="submit">Giriş yap</button>
+      </form>
+      <p class="alt-not"><button class="baglanti" id="unuttum" type="button">Şifremi unuttum</button></p>
+    </section>
+
+    <!-- YENİ ŞİFRE (e-postadaki bağlantıdan gelince) -->
+    <section id="bolum_yeni" hidden>
+      <h1>Yeni şifre belirle</h1>
+      <p class="aciklama">En az 8 karakter.</p>
+      <form id="form_yeni">
+        <label for="yeni_sifre">Yeni şifre</label>
+        <input id="yeni_sifre" type="password" autocomplete="new-password" required minlength="8">
+        <button class="dugme tam" type="submit">Kaydet</button>
+      </form>
+    </section>
+
+    <!-- LİSANS DURUMU -->
+    <section id="bolum_lisans" hidden>
+      <h1 id="lisans_baslik">Lisans</h1>
+      <p class="aciklama" id="lisans_metin"></p>
+      <div class="yukleniyor" id="yukleniyor" hidden><i></i><span id="yukleniyor_metin">Program yükleniyor…</span></div>
+      <button class="dugme tam ikincil" id="yenile" type="button" hidden>Tekrar dene</button>
+      <p class="alt-not"><span id="kim"></span> · <button class="baglanti" id="cikis" type="button">Çıkış</button>
+        <span id="yonetim_bag" hidden> · <a href="yonetim.html">Yönetim</a></span></p>
+    </section>
+
+    <div class="mesaj" id="mesaj" role="status"></div>
+  </div>
+</div>
+
+<iframe id="uygulama" title="AHU Studio" hidden></iframe>
+<div id="menu" hidden>
+  <a href="yonetim.html" id="menu_yonetim" hidden>Yönetim</a>
+  <button type="button" id="menu_cikis">Çıkış</button>
+</div>
+<div id="serit" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+(function(){
+  'use strict';
+  const A = window.AHU_AYAR;
+  const $ = id => document.getElementById(id);
+  if (!window.supabase || !A || A.SUPABASE_URL.indexOf('PROJE-KIMLIGI') >= 0) {
+    mesaj('Site henüz yapılandırılmadı (config.js) ya da bağlantı yok.', 'hata');
+    $('form').querySelectorAll('input,button').forEach(e => e.disabled = true);
+    return;
+  }
+  const sb = window.supabase.createClient(A.SUPABASE_URL, A.SUPABASE_ANON_KEY);
+  let kip = 'giris', acik = false, sayac = null, kontrolde = false;
+
+  function mesaj(m, tur){ const e = $('mesaj'); e.textContent = m || ''; e.className = 'mesaj' + (m ? ' goster ' + (tur||'bilgi') : ''); }
+  function goster(bolum){ ['bolum_form','bolum_yeni','bolum_lisans'].forEach(b => $(b).hidden = (b !== bolum)); }
+  function hataMetni(e){
+    const m = (e && e.message) || String(e);
+    if (/Invalid login credentials/i.test(m)) return 'E-posta ya da şifre hatalı.';
+    if (/Email not confirmed/i.test(m)) return 'E-posta adresin henüz doğrulanmadı. Gelen kutundaki bağlantıya tıkla.';
+    if (/already registered/i.test(m)) return 'Bu e-posta ile zaten bir hesap var. Giriş yap.';
+    if (/Password should be/i.test(m)) return 'Şifre en az 8 karakter olmalı.';
+    if (/rate limit/i.test(m)) return 'Çok sık denendi. Biraz bekleyip tekrar dene.';
+    return m;
+  }
+
+  // --- giriş / kayıt sekmeleri
+  document.querySelectorAll('.sekmeler button').forEach(b => b.addEventListener('click', () => {
+    kip = b.dataset.kip;
+    document.querySelectorAll('.sekmeler button').forEach(x => x.classList.toggle('aktif', x === b));
+    const kayit = kip === 'kayit';
+    $('kayit_alanlari').hidden = !kayit;
+    $('baslik').textContent = kayit ? 'Hesap oluştur' : 'Giriş yap';
+    $('aciklama').textContent = kayit ? 'Kayıttan sonra hesabın yönetici onayıyla açılır.' : 'Lisanslı hesabınla devam et.';
+    $('gonder').textContent = kayit ? 'Kayıt ol' : 'Giriş yap';
+    $('sifre').autocomplete = kayit ? 'new-password' : 'current-password';
+    mesaj('');
+  }));
+
+  $('form').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const eposta = $('eposta').value.trim(), sifre = $('sifre').value;
+    $('gonder').disabled = true; mesaj('');
+    try {
+      if (kip === 'kayit') {
+        const { data, error } = await sb.auth.signUp({ email: eposta, password: sifre, options: {
+          data: { ad: $('ad').value.trim(), firma: $('firma').value.trim() },
+          emailRedirectTo: location.origin + location.pathname } });
+        if (error) throw error;
+        if (!data.session) mesaj('Kayıt alındı. E-postana gelen bağlantıyla adresini doğrula; ardından hesabın yönetici onayıyla açılacak.', 'tamam');
+      } else {
+        const { error } = await sb.auth.signInWithPassword({ email: eposta, password: sifre });
+        if (error) throw error;
+      }
+    } catch (e) { mesaj(hataMetni(e), 'hata'); }
+    finally { $('gonder').disabled = false; }
+  });
+
+  $('unuttum').addEventListener('click', async () => {
+    const eposta = $('eposta').value.trim();
+    if (!eposta) { mesaj('Önce e-posta adresini yaz.', 'hata'); $('eposta').focus(); return; }
+    const { error } = await sb.auth.resetPasswordForEmail(eposta, { redirectTo: location.origin + location.pathname });
+    mesaj(error ? hataMetni(error) : 'Şifre sıfırlama bağlantısı e-postana gönderildi.', error ? 'hata' : 'tamam');
+  });
+
+  $('form_yeni').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const { error } = await sb.auth.updateUser({ password: $('yeni_sifre').value });
+    if (error) return mesaj(hataMetni(error), 'hata');
+    mesaj('Şifren değişti.', 'tamam');
+    const { data } = await sb.auth.getSession();
+    if (data.session) lisansaBak(data.session);
+  });
+
+  async function cikis(){ await sb.auth.signOut(); location.reload(); }
+  $('cikis').addEventListener('click', cikis);
+  $('menu_cikis').addEventListener('click', cikis);
+  $('yenile').addEventListener('click', async () => { const { data } = await sb.auth.getSession(); if (data.session) lisansaBak(data.session); });
+
+  // --- lisans kontrolü ve programın yüklenmesi
+  async function durumSor(){
+    const { data, error } = await sb.rpc('lisans_durumu');
+    if (error) throw error;
+    return data;
+  }
+
+  async function lisansaBak(oturum){
+    if (kontrolde || acik) return;
+    kontrolde = true;
+    try { await lisansaBakGovde(oturum); } finally { kontrolde = false; }
+  }
+
+  async function lisansaBakGovde(oturum){
+    goster('bolum_lisans'); mesaj('');
+    $('kim').textContent = oturum.user.email;
+    $('yenile').hidden = true;
+    $('lisans_baslik').textContent = 'Lisans kontrol ediliyor…';
+    $('lisans_metin').textContent = '';
+    let d;
+    try { sb.rpc('giris_kaydet'); d = await durumSor(); }
+    catch (e) { $('lisans_baslik').textContent = 'Bağlantı hatası'; mesaj(hataMetni(e), 'hata'); $('yenile').hidden = false; return; }
+    $('yonetim_bag').hidden = !d.yonetici;
+    $('menu_yonetim').hidden = !d.yonetici;
+
+    if (!d.gecerli) {
+      if (d.aktif && d.bitis) {
+        $('lisans_baslik').textContent = 'Lisans süresi doldu';
+        $('lisans_metin').textContent = 'Lisansın ' + trTarih(d.bitis) + ' tarihinde sona erdi. Yenilemek için Cenk Altınay ile iletişime geç.';
+      } else {
+        $('lisans_baslik').textContent = 'Onay bekleniyor';
+        $('lisans_metin').textContent = 'Hesabın oluşturuldu, lisansın henüz etkinleştirilmedi. Onaylandığında bu sayfayı yenilemen yeterli.';
+      }
+      $('yenile').hidden = false;
+      return;
+    }
+
+    // tam lisans ?surum=sade ile sade sürümü de açabilir
+    const istek = new URLSearchParams(location.search).get('surum');
+    const surum = (d.surum === 'tam' && istek !== 'sade') ? 'tam' : 'sade';
+    $('lisans_baslik').textContent = 'Hoş geldin';
+    $('lisans_metin').textContent = d.bitis ? 'Lisans bitişi: ' + trTarih(d.bitis) : 'Süresiz lisans';
+    $('yukleniyor').hidden = false;
+    try {
+      const { data: blob, error } = await sb.storage.from(A.KOVA).download(A.DOSYALAR[surum]);
+      if (error) throw error;
+      const metin = await blob.text();
+      const url = URL.createObjectURL(new Blob([metin], { type: 'text/html;charset=utf-8' }));
+      const f = $('uygulama');
+      f.src = url;
+      f.hidden = false;
+      $('giris_sahne').hidden = true;
+      $('menu').hidden = false;
+      document.title = 'AHU Studio';
+      acik = true;
+      donemselKontrol();
+    } catch (e) {
+      $('yukleniyor').hidden = true;
+      $('lisans_baslik').textContent = 'Program yüklenemedi';
+      mesaj('Program dosyası alınamadı: ' + hataMetni(e) + (d.yonetici ? ' — Yönetim sayfasından programı yüklediğinden emin ol.' : ''), 'hata');
+      $('yenile').hidden = false;
+    }
+  }
+
+  // Açıkken lisans arada bir yeniden sorulur. Süresi dolarsa ÇALIŞMA KESİLMEZ
+  // (kaydedilmemiş proje kaybolmasın) — uyarı çıkar, sonraki girişte açılmaz.
+  function donemselKontrol(){
+    clearInterval(sayac);
+    sayac = setInterval(async () => {
+      try {
+        const d = await durumSor();
+        if (!d.gecerli) { $('serit').textContent = 'Lisansın artık geçerli değil. Projeni kaydet; program bir sonraki girişte açılmayacak.'; $('serit').hidden = false; }
+      } catch (e) { /* bağlantı yoksa sessiz geç */ }
+    }, (A.LISANS_KONTROL_DK || 30) * 60000);
+  }
+
+  function trTarih(s){ const p = String(s).split('-'); return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : s; }
+
+  window.addEventListener('beforeunload', e => { if (acik) { e.preventDefault(); e.returnValue = ''; } });
+
+  sb.auth.onAuthStateChange((olay, oturum) => {
+    if (olay === 'PASSWORD_RECOVERY') { goster('bolum_yeni'); return; }
+    if (olay === 'SIGNED_IN' && oturum && !acik && $('bolum_yeni').hidden) setTimeout(() => lisansaBak(oturum), 0);
+    if (olay === 'SIGNED_OUT') { acik = false; }
+  });
+
+  (async () => {
+    const { data } = await sb.auth.getSession();
+    if (data.session && !acik && $('bolum_yeni').hidden) lisansaBak(data.session);
+  })();
+})();
+</script>
+</body>
+</html>

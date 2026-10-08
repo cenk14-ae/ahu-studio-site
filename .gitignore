@@ -1,0 +1,4 @@
+*.service-key
+.env
+index-sade.html.bak
+uygulama/

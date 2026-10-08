@@ -21,8 +21,6 @@
 </style>
 </head>
 <body>
-<!-- açılış perdesinin zemini: betik gelmeden içerik görünmesin (efekt.js noktaları ekler) -->
-<div id="efekt-perde"></div>
 
 <!-- Giriş ekranı arka planı (arka-plan.js) — program/ana sayfa açılınca durur ve gizlenir -->
 <canvas id="kozmik-bg" aria-hidden="true"></canvas>
@@ -148,23 +146,24 @@
     return;
   }
   const sb = window.supabase.createClient(A.SUPABASE_URL, A.SUPABASE_ANON_KEY);
-  // AÇILIŞ PERDESİ (efekt.js): ekranın SON hâli hazır olunca kalkar — program açılıyorsa program
-  // tamamen hazır olunca. Böylece 'önce içerik, sonra animasyon, sonra yine içerik' olmaz.
-  const PERDE = window.Efekt ? Efekt.perde() : { bitir: function (cb) { if (cb) cb(); } };
-  let perdeKalkti = false;
-  function perdeKaldir(cb){ if (perdeKalkti) { if (cb) cb(); return; } perdeKalkti = true; PERDE.bitir(cb); }
-  // hiçbir durumda perdede asılı kalmasın — süre yalnız sekme görünürken işler
-  (function emniyet(g, s){ const n = Date.now(); if (!document.hidden) g += n - s; if (g > 15000) perdeKaldir(); else if (!perdeKalkti) setTimeout(function(){ emniyet(g, n); }, 500); })(0, Date.now());
+  // AÇILIŞ PERDESİ (efekt.js) YALNIZ PROGRAM AÇILIRKEN: program arkada hazırlanır, perde ancak program
+  // tamamen hazır olunca kalkar ('önce içerik, sonra animasyon, sonra yine içerik' olmasın).
+  // Giriş ekranında perde YOK — Cenk: «asıl eklediğim arka planı görmek istiyorum».
+  let PERDE = null, perdeKalkti = false;
+  function perdeAc(){
+    if (PERDE || !window.Efekt) return;
+    PERDE = Efekt.perde(); perdeKalkti = false;
+    // hiçbir durumda perdede asılı kalmasın — süre yalnız sekme görünürken işler
+    (function emniyet(g, s){ const n = Date.now(); if (!document.hidden) g += n - s; if (g > 15000) perdeKaldir(); else if (!perdeKalkti) setTimeout(function(){ emniyet(g, n); }, 500); })(0, Date.now());
+  }
+  function perdeKaldir(cb){ if (!PERDE || perdeKalkti) { if (cb) cb(); return; } perdeKalkti = true; PERDE.bitir(cb); }
   let kip = 'giris', acik = false, sayac = null, kontrolde = false;
 
   function mesaj(m, tur){ const e = $('mesaj'); e.textContent = m || ''; e.className = 'mesaj' + (m ? ' goster ' + (tur||'bilgi') : ''); }
   function goster(bolum){
     ['bolum_form','bolum_yeni','bolum_lisans','bolum_acik'].forEach(b => $(b).hidden = (b !== bolum));
-    // 'bolum_lisans' ara durumdur (lisans soruluyor / program iniyor) — perde onda kalkmaz
-    if (bolum !== 'bolum_lisans') {
-      if (perdeKalkti) { if (window.Efekt) Efekt.beam(); }
-      else perdeKaldir(function(){ if (window.Efekt) Efekt.giris('#giris_sahne .kart'); });
-    }
+    // Program açılırken perde vardı ve hata/uyarı çıktıysa perde kalksın (giriş ekranında perde yok)
+    if (bolum !== 'bolum_lisans') perdeKaldir();
   }
   // Arka plan yalnız giriş ekranında: program ya da ana sayfa açılınca GPU'yu boşa yormasın
   function arkaPlan(acik){
@@ -316,6 +315,7 @@
     $('lisans_baslik').textContent = 'Hoş geldin';
     $('lisans_metin').textContent = d.bitis ? 'Lisans bitişi: ' + trTarih(d.bitis) : 'Süresiz lisans';
     $('yukleniyor').hidden = false;
+    perdeAc();   // program iniyor: perde şimdi iner, program hazır olunca kalkar
     try {
       const { data: blob, error } = await sb.storage.from(A.KOVA).download(dosyaAdi);
       if (error) throw error;

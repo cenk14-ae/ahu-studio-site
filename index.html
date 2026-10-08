@@ -153,7 +153,8 @@
   const PERDE = window.Efekt ? Efekt.perde() : { bitir: function (cb) { if (cb) cb(); } };
   let perdeKalkti = false;
   function perdeKaldir(cb){ if (perdeKalkti) { if (cb) cb(); return; } perdeKalkti = true; PERDE.bitir(cb); }
-  setTimeout(function(){ perdeKaldir(); }, 15000);   // hiçbir durumda perdede asılı kalmasın
+  // hiçbir durumda perdede asılı kalmasın — süre yalnız sekme görünürken işler
+  (function emniyet(g, s){ const n = Date.now(); if (!document.hidden) g += n - s; if (g > 15000) perdeKaldir(); else if (!perdeKalkti) setTimeout(function(){ emniyet(g, n); }, 500); })(0, Date.now());
   let kip = 'giris', acik = false, sayac = null, kontrolde = false;
 
   function mesaj(m, tur){ const e = $('mesaj'); e.textContent = m || ''; e.className = 'mesaj' + (m ? ' goster ' + (tur||'bilgi') : ''); }
@@ -450,7 +451,9 @@
   // zaten oynadığı için onu görünmeden KISA KESERİZ (f0'ın kendi 'tuşa basınca kapan' yolu) ve
   // f0 perdesi kalkınca site perdesini kaldırırız. Başka programda kabuk yüklenince hazırdır.
   function programHazir(cb){
-    const f = $('uygulama'), t0 = Date.now();
+    // Süre YALNIZ sekme görünürken sayılır: arka plan sekmesinde tarayıcı animasyon karelerini
+    // dondurur, f0 perdesi ancak sekme öne gelince oynar — o zamana dek site perdesi kalkmamalı.
+    const f = $('uygulama'); let gorunur = 0, son = Date.now();
     (function bak(){
       let hazir = false;
       try {
@@ -465,7 +468,8 @@
           }
         }
       } catch (e) { hazir = true; }
-      if (hazir || Date.now() - t0 > 9000) cb(); else setTimeout(bak, 80);
+      const simdi = Date.now(); if (!document.hidden) gorunur += simdi - son; son = simdi;
+      if (hazir || gorunur > 9000) cb(); else setTimeout(bak, 80);
     })();
   }
 

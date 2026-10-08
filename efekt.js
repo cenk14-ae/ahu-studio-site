@@ -30,7 +30,8 @@
     document.body.appendChild(d);
     var t0 = performance.now(), bitti = false;
     // iki kare bekle: ağır açılış işi bitince oynasın (AHU Studio'daki ölçümün aynısı)
-    requestAnimationFrame(function () { requestAnimationFrame(function () { d.classList.add('oyna'); }); });
+    // Arka plan sekmesinde kare gelmez: süre sekme öne gelince başlar (t0 o an sıfırlanır)
+    requestAnimationFrame(function () { requestAnimationFrame(function () { t0 = performance.now(); d.classList.add('oyna'); }); });
     return {
       bitir: function (cb) {
         if (bitti) return; bitti = true;

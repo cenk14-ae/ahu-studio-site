@@ -71,3 +71,13 @@ $$;
 -- 5) Yöneticinin kendi Ad Soyad'ı boşsa doldur (antetin ÇİZEN hücresi)
 update public.lisanslar set ad = 'Cenk Altınay'
 where user_id in (select user_id from public.yoneticiler) and coalesce(ad, '') = '';
+
+-- 6) İkinci parti (08.10.2026) — '.gz' = sıkıştırılmış saklanır, yükleyici çözer
+insert into public.programlar (id, ad, dosyalar) values
+  ('sartname', 'Şartname Çözümleyici',  '{araclar/sartname-cozumleyici.html.gz}'),
+  ('lazer',    'Lazer ERP',             '{araclar/lazer-erp.html}'),
+  ('atolye',   'Atölye Hesap Araçları', '{araclar/atolye-hesap-araclari.html}'),
+  ('bukum',    'Sac Büküm Simülatörü',  '{araclar/sac-bukum-simulatoru.html}'),
+  ('maliyet',  'HVAC Proje Maliyet',    '{araclar/hvac-maliyet.html}'),
+  ('kontrol',  'Kontrol Tezgâhı',       '{araclar/kontrol-tezgahi.html}')
+on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;

@@ -250,7 +250,10 @@
     try {
       const { data: blob, error } = await sb.storage.from(A.KOVA).download(dosyaAdi);
       if (error) throw error;
-      const metin = await blob.text();
+      // '.gz' dosyalar (10 MB üstü programlar) sıkıştırılmış saklanır; burada çözülür
+      const metin = /\.gz$/.test(dosyaAdi)
+        ? await new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).text()
+        : await blob.text();
       const url = URL.createObjectURL(new Blob([metin], { type: 'text/html;charset=utf-8' }));
       const f = $('uygulama');
       f.onload = programYuklendi;
@@ -297,9 +300,20 @@
         const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
         if (!a) return;
         const h = a.getAttribute('href');
+        const kok = location.origin + location.pathname.replace(/[^/]*$/, '');
         if (h === '/' || h === './' || h === 'index.html' || a.id === 'hm-ev') {
           e.preventDefault(); e.stopPropagation();
-          location.href = location.origin + location.pathname.replace(/[^/]*$/, '');
+          location.href = kok;
+          return;
+        }
+        // Programlar arası bağlantı (ör. Lazer ERP ↔ Atölye Hesap Araçları): dosya adı → ?ac=<id>.
+        // Erişimi olmayan program yine depo kuralında durur; yükleyici kullanıcının kendi programına düşer.
+        const ad = (h || '').split(/[?#]/)[0].split('/').pop();
+        const hedef = ad && A.PROGRAMLAR.find(p => Object.values(p.dosyalar).some(f => f.split('/').pop().replace(/\.gz$/, '') === ad));
+        if (hedef) {
+          e.preventDefault(); e.stopPropagation();
+          const url = kok + '?ac=' + encodeURIComponent(hedef.id);
+          if (a.target === '_blank') window.open(url, '_blank', 'noopener'); else location.href = url;
         }
       }, true);
     } catch (e) {}

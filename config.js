@@ -27,7 +27,14 @@ window.AHU_AYAR = {
     { id: 'sukacagi', renk: '#2ec4a6', ad: 'Su Kaçağı Koruma Setleri', aciklama: 'Aqara ve Tuya tabanlı 5 set: saha durumuna göre öneri, düzenlenebilir fiyat listesi ve maliyet karşılaştırması.', dosyalar: { tek: 'araclar/su-kacagi.html' } },
     { id: 'plan', renk: '#e563c9', ad: 'Ev ve Araç Alım Planı', aciklama: '120 aylık birikim projeksiyonu, BDDK kredi sınırları, kur şoku testi ve tasarruf finansmanı karşılaştırması.', dosyalar: { tek: 'araclar/ev-arac-plani.html' } },
     { id: 'uvc', renk: '#b07cff', ad: 'UV-C Lamba Seçimi', aciklama: 'Klima santrali kasasına UV-C lamba modeli, adedi ve yerleşimi; serpantin ışınımı ve hava dezenfeksiyonu dozu.', dosyalar: { tek: 'araclar/uvc-lamba.html' } },
-    { id: 'otopark', renk: '#ef6461', ad: 'Otopark Akış Simülatörü', aciklama: 'Jet fan, egzoz ve basınçlandırmanın 2B akış simülasyonu: ölü bölge, duman yayılımı ve bekleme süresi analizi.', dosyalar: { tek: 'araclar/otopark-akis.html' } }
+    { id: 'otopark', renk: '#ef6461', ad: 'Otopark Akış Simülatörü', aciklama: 'Jet fan, egzoz ve basınçlandırmanın 2B akış simülasyonu: ölü bölge, duman yayılımı ve bekleme süresi analizi.', dosyalar: { tek: 'araclar/otopark-akis.html' } },
+    // 08.10.2026 ikinci parti. '.gz' dosya: yükleyici açarken çözer (10 MB üstü programlar)
+    { id: 'sartname', renk: '#5ce1e6', ad: 'Şartname Çözümleyici', aciklama: 'AHU, rooftop ve IGK şartnamelerini (PDF, Word, Excel, taranmış belge) okuyup çözümler.', dosyalar: { tek: 'araclar/sartname-cozumleyici.html.gz' } },
+    { id: 'lazer', renk: '#ff4d9d', ad: 'Lazer ERP', aciklama: 'Lazer kesim üretim yönetimi: işler, planlama ve atölye takibi.', dosyalar: { tek: 'araclar/lazer-erp.html' } },
+    { id: 'atolye', renk: '#c9a26b', ad: 'Atölye Hesap Araçları', aciklama: 'Sac/profil ağırlığı, firesiz profil boy kesimi, DXF metrajı ve diğer atölye hesapları.', dosyalar: { tek: 'araclar/atolye-hesap-araclari.html' } },
+    { id: 'bukum', renk: '#91a7bd', ad: 'Sac Büküm Simülatörü', aciklama: 'Sac büküm simülasyonu ve büküm raporu.', dosyalar: { tek: 'araclar/sac-bukum-simulatoru.html' } },
+    { id: 'maliyet', renk: '#ffd43b', ad: 'HVAC Proje Maliyet', aciklama: 'HVAC projelerinin maliyet hesabı.', dosyalar: { tek: 'araclar/hvac-maliyet.html' } },
+    { id: 'kontrol', renk: '#a9e34b', ad: 'Kontrol Tezgâhı', aciklama: 'Nem alma santrali kontrol tezgâhı: santral tasarımı, ESP32 yazılımı (.bin) ve kaynak kodu.', dosyalar: { tek: 'araclar/kontrol-tezgahi.html' } }
   ]
 };
 // Eski adla okuyan kod için (yönetim sayfasının dosya listesi)

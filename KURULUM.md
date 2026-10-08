@@ -70,3 +70,26 @@ Veritabanında rol `lisanslar.surum` alanıdır (`tam` = Pro, `sade` = Normal); 
   çevrimdışı kullanabilir. Bu sistem **lisanssız erişimi** engeller, lisanslı kullanıcının kopyalamasını değil.
 - Aynı hesabın birden çok cihazda kullanılması şu an sınırlanmıyor (ileride eklenebilir).
 - Tam sürümdeki şifre kapısı (`#giris`) yerinde kalır — tam sürüm için ikinci bir kilit.
+
+## Kullanıcı verisi (08.10.2026)
+Programlar (blob iframe) sitenin kökeninde çalıştığı için localStorage/IndexedDB **bütün kullanıcılar
+ve programlarca ortaktı**. Artık her programın verisi **kullanıcıya ve programa ait ad alanında** durur
+ve **buluta** yazılır; kullanıcılar birbirininkini göremez. **Programların kendisi değişmedi.**
+- `veri-katmani.js` — yükleyici bunu program HTML'inin `<head>`'ine gömer: `localStorage` ve
+  `indexedDB.open/deleteDatabase/databases` adlarını `<uid>:<program>:` önekine çevirir, programın
+  kendi srcdoc çerçevelerine (Hesap Merkezi, RTU) kendini yeniden gömer, değişikliği yükleyiciye bildirir.
+- `kullanici-verisi.js` — yükleyici tarafı: ad alanının anlık görüntüsü (localStorage + IndexedDB
+  şema/kayıt, Blob/ArrayBuffer base64) → gzip → özel kova **`kullanici-verisi`**, yol
+  `<uid>/<program>.json.gz`. Son değişiklikten 3 sn sonra ve sekme gizlenince yazar; içerik aynıysa
+  yazmaz. Açılışta program AÇILMADAN önce bulut başka cihazda değişmişse ad alanını ondan kurar
+  (son yazan kazanır; tek oturum aynı anda tek cihazı garanti eder). **Bulut okunamazsa program açılmaz**
+  (boş açılıp buluttakini ezmesin). Sayfa kapanırken yetişmeyen yazım bir sonraki açılışta yapılır.
+- Sağ alt menüde gösterge: *Bulut: kaydedildi hh:mm / kaydediliyor / buluttan alındı / yazılamadı*.
+- **Depo kuralı** `supabase/5-kullanici-verisi.sql` (`veri_izni`): yalnız **kendi klasörü** + geçerli lisans +
+  aktif oturum bu cihazda + program kullanıcıya açık. **Yönetici de başkasının klasörünü okuyamaz.**
+- **Geçiş:** yönetici bir programı ilk açtığında bulutta kaydı yoksa ad alansız ESKİ veri (ör. IndexedDB
+  `lazercrm`) ad alanına kopyalanır ve yüklenir; **eskisi silinmez** (yedek). Yönetici olmayanda geçiş yok.
+- **Kapsam dışı:** AHU Studio (projeler dosyaya kaydedilir; ince istemci Supabase belirtecini
+  localStorage'dan okur). Şartname'nin OCR dil önbelleği (`keyval-store`, Worker içinde) buluta yazılmaz.
+  Lazer ERP'nin yedek klasörü tanıtıcısı (FileSystemHandle) serileştirilemez — her cihazda yeniden seçilir.
+- Doğrulama: `dogrulama/kullanici-verisi-tarayici.js` (gerçek Chrome + sahte Supabase, 47 kontrol).

@@ -55,8 +55,12 @@ Veritabanında rol `lisanslar.surum` alanıdır (`tam` = Pro, `sade` = Normal); 
 
 ## Günlük kullanım
 - **Yeni müşteri:** kendisi kayıt olur → Yönetim'de *Aktif* işaretle, sürüm + bitiş seç → Kaydet.
-- **Program güncellemesi:** `SANTRAL APP`'te `_sade-uret.js` ile iki sürümü üret → Yönetim → *Yükle / güncelle*.
-  Kullanıcılar bir sonraki açılışta yeni sürümü alır. **GitHub'a bir şey göndermek gerekmez.**
+- **Program güncellemesi** (çekirdek sunucuda — sıra ÖNEMLİ):
+  1. `SANTRAL APP`'te `_sade-uret.js` → `_sunucu-uret.js` (ince dosyalar `cevrimici/`'ye + sunucu paketi)
+  2. `sunucu-esdeger-test.js` → 0 fark
+  3. sunucuyu yayınla (`supabase functions deploy cekirdek --use-api`)
+  4. Yönetim → *Program dosyaları*: `cevrimici/index-ince.html` → **index.html**, `cevrimici/index-sade-ince.html` → **index-sade.html**
+  Eski sayfası açık kalan kullanıcı «Program güncellendi — sayfayı yenileyin» uyarısı alır (sürüm damgası). **GitHub'a bir şey göndermek gerekmez.**
 - **Süre dolarsa:** açık oturum kesilmez (kaydedilmemiş proje kaybolmasın), uyarı çıkar; sonraki girişte açılmaz.
 
 ## Dürüst sınırlar

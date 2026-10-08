@@ -44,6 +44,15 @@ Natro'nun kendi park/yönlendirme A kayıtları varsa silinir. Yayılması 10 dk
 2. SQL Editor'de `kurulum.sql`'in **7. bloğunu** tekrar çalıştır → yönetici + tam lisans.
 3. Sitede giriş → **Yönetim** → *Program dosyaları*: `index.html` ve `index-sade.html`'i yükle.
 
+## Roller
+| Rol | Ne açar | Nasıl verilir |
+|---|---|---|
+| **Yönetici** (Cenk) | tam sürüm + Yönetim sayfası | yalnız SQL: `yoneticiler` tablosu |
+| **Pro** | tam sürüm (AHU Studio'nun tamamı) | Yönetim → Rol: *Pro* |
+| **Normal** | sade sürüm | Yönetim → Rol: *Normal* (kayıtta varsayılan) |
+
+Veritabanında rol `lisanslar.surum` alanıdır (`tam` = Pro, `sade` = Normal); izin depo kuralında (`dosya_izni`) uygulanır.
+
 ## Günlük kullanım
 - **Yeni müşteri:** kendisi kayıt olur → Yönetim'de *Aktif* işaretle, sürüm + bitiş seç → Kaydet.
 - **Program güncellemesi:** `SANTRAL APP`'te `_sade-uret.js` ile iki sürümü üret → Yönetim → *Yükle / güncelle*.

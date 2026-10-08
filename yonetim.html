@@ -37,7 +37,7 @@
     <div class="tablo-kap">
       <table>
         <thead><tr>
-          <th>Kullanıcı</th><th>Durum</th><th>Aktif</th><th>Sürüm</th><th>Bitiş</th><th>Not</th><th>Son giriş</th><th></th>
+          <th>Kullanıcı</th><th>Durum</th><th>Aktif</th><th title="Normal: sade sürüm · Pro: tam sürüm · Yönetici: tam sürüm + bu sayfa">Rol</th><th>Bitiş</th><th>Not</th><th>Son giriş</th><th></th>
         </tr></thead>
         <tbody id="satirlar"></tbody>
       </table>
@@ -58,7 +58,7 @@
   const A = window.AHU_AYAR;
   const $ = id => document.getElementById(id);
   const sb = window.supabase.createClient(A.SUPABASE_URL, A.SUPABASE_ANON_KEY);
-  let liste = [];
+  let liste = [], yoneticiler = new Set();
 
   function mesaj(m, tur){ const e = $('mesaj'); e.textContent = m || ''; e.className = 'mesaj' + (m ? ' goster ' + (tur||'bilgi') : ''); }
   function kac(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -87,6 +87,8 @@
   async function yukle(){
     const { data, error } = await sb.from('lisanslar').select('*').order('olusturma', { ascending: false });
     if (error) return mesaj(error.message, 'hata');
+    const { data: y } = await sb.from('yoneticiler').select('user_id');
+    yoneticiler = new Set((y || []).map(r => r.user_id));
     liste = data; ciz();
   }
   $('tazele').addEventListener('click', yukle);
@@ -105,7 +107,9 @@
         '<td><div class="eposta">' + kac(l.eposta) + '</div><div class="ufak">' + kac([l.ad, l.firma].filter(Boolean).join(' · ') || '—') + '</div></td>' +
         '<td><span class="rozet ' + c + '">' + t + '</span></td>' +
         '<td><input type="checkbox" data-alan="aktif"' + (l.aktif ? ' checked' : '') + ' style="width:auto"></td>' +
-        '<td><select data-alan="surum"><option value="sade"' + (l.surum === 'sade' ? ' selected' : '') + '>Sade</option><option value="tam"' + (l.surum === 'tam' ? ' selected' : '') + '>Tam</option></select></td>' +
+        (yoneticiler.has(l.user_id)
+          ? '<td><span class="rozet yonetici">Yönetici</span><input type="hidden" data-alan="surum" value="tam"></td>'
+          : '<td><select data-alan="surum"><option value="sade"' + (l.surum === 'sade' ? ' selected' : '') + '>Normal — sade sürüm</option><option value="tam"' + (l.surum === 'tam' ? ' selected' : '') + '>Pro — tam sürüm</option></select></td>') +
         '<td style="white-space:nowrap"><input type="date" data-alan="bitis" value="' + (l.bitis || '') + '" style="width:150px"> <button class="dugme ikincil kucuk" data-is="yil" type="button" title="Bitişe 1 yıl ekle">+1 yıl</button></td>' +
         '<td><input data-alan="notlar" value="' + kac(l.notlar) + '" placeholder="—" style="min-width:140px"></td>' +
         '<td class="ufak" style="white-space:nowrap">' + tarihSaat(l.son_giris) + '</td>' +
@@ -135,8 +139,8 @@
 
   // --- program dosyaları (özel kova)
   const DOSYA_ACIKLAMA = {
-    tam:  ['Tam sürüm', 'Gizli imalat modu dahil — yalnız "Tam" lisans açar'],
-    sade: ['Sade sürüm', 'Müşteri sürümü — her geçerli lisans açar']
+    tam:  ['Tam sürüm', 'Pro kullanıcılar ve yönetici açar'],
+    sade: ['Sade sürüm', 'Normal kullanıcılar açar (gizli imalat modu yok)']
   };
   async function dosyalariCiz(){
     const { data } = await sb.storage.from(A.KOVA).list('', { limit: 100 });

@@ -182,7 +182,8 @@
     $('lisans_baslik').textContent = 'Lisans kontrol ediliyor…';
     $('lisans_metin').textContent = '';
     let d;
-    try { sb.rpc('giris_kaydet'); d = await durumSor(); }
+    // rpc tembeldir: then() bağlanmazsa istek HİÇ gitmez
+    try { sb.rpc('giris_kaydet').then(function(){}, function(){}); d = await durumSor(); }
     catch (e) { $('lisans_baslik').textContent = 'Bağlantı hatası'; mesaj(hataMetni(e), 'hata'); $('yenile').hidden = false; return; }
     $('yonetim_bag').hidden = !d.yonetici;
     $('menu_yonetim').hidden = !d.yonetici;

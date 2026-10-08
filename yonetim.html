@@ -2,6 +2,11 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
+<!-- SAYFA KORUMASI: başka bir site bu sayfayı çerçeve içine alamaz (tıklama tuzağı). Pages güvenlik başlığı
+     veremediği için JS ile: çerçevedeyse görünmez kalır ve kendi adresine kaçar. -->
+<style id="cerceve-kalkan">html{display:none!important}</style>
+<script>if(self===top){var k=document.getElementById('cerceve-kalkan');k.parentNode.removeChild(k);}else{try{top.location.replace(self.location.href);}catch(e){}}</script>
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ALTINAY · Yönetim</title>
 <meta name="robots" content="noindex">

@@ -212,3 +212,10 @@ tbody tr,tbody tr td{transition:background .14s}
 @keyframes efektTriOut{to{transform:scale(1.3);opacity:0;filter:blur(7px)}}
 @keyframes efektPerdeOut{to{opacity:0;visibility:hidden}}
 @media (prefers-reduced-motion:reduce){#efekt-perde,#efekt-beam{display:none}.efekt-gir,.ust::after{animation:none}}
+
+/* Ana sayfa da kozmik arka planın üstünde: kartlar ve üst çubuk yarı saydam + buzlu cam */
+#ana_sayfa{position:relative;z-index:2;min-height:100vh}
+#ana_sayfa .ust{background:rgba(9,11,18,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom-color:rgba(214,226,255,.1)}
+#ana_sayfa .pkart{background:rgba(14,17,26,.74);border-color:rgba(214,226,255,.13);-webkit-backdrop-filter:blur(10px) saturate(1.2);backdrop-filter:blur(10px) saturate(1.2)}
+#ana_sayfa .pkart:hover{background:rgba(20,24,36,.72)}
+#ana_sayfa .ana-baslik{color:rgba(214,226,255,.75);text-shadow:0 1px 12px rgba(3,4,12,.8)}

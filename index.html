@@ -481,7 +481,8 @@
       document.querySelectorAll('#ana_sayfa .kartlar')[1].hidden = true;
       document.querySelector('#ana_sayfa .marka .alt').textContent = '· Programlarım';
     }
-    $('giris_sahne').hidden = true; arkaPlan(false);
+    // Ana sayfa da giriş ekranının arka planını taşır (Cenk, 08.10.2026)
+    $('giris_sahne').hidden = true; arkaPlan(true);
     $('ana_sayfa').hidden = false;
     $('ana_kim').textContent = oturum.user.email;
     perdeKaldir(function(){ if (window.Efekt) Efekt.giris('#ana_sayfa .pkart'); });

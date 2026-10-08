@@ -57,6 +57,7 @@
         <input id="eposta" type="email" autocomplete="email" required>
         <label for="sifre">Şifre</label>
         <input id="sifre" type="password" autocomplete="current-password" required minlength="8">
+        <div id="captcha" class="captcha"></div>
         <button class="dugme tam" id="gonder" type="submit">Giriş yap</button>
       </form>
       <p class="alt-not"><button class="baglanti" id="unuttum" type="button">Şifremi unuttum</button></p>
@@ -146,6 +147,7 @@
 <script src="efekt.js"></script>
 <script src="kullanici-verisi.js"></script>
 <script src="bekleme.js"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <script>
 (function(){
   'use strict';
@@ -205,29 +207,53 @@
     mesaj('');
   }));
 
+  // ROBOT KORUMASI (Cloudflare Turnstile, Managed): giriş / kayıt / şifre sıfırlama bir doğrulama belirteci
+  // taşır; Supabase belirteci sunucuda doğrular (captcha zorunlu). Belirteç TEK KULLANIMLIK — her denemeden
+  // sonra yenilenir. Kullanıcıların çoğu hiçbir şey görmez; şüpheli trafikte tek tıklık kutu çıkar.
+  let captchaToken = null, captchaId = null;
+  function captchaKur(){
+    if (captchaId !== null || !A.TURNSTILE_SITE_KEY) return;
+    if (!window.turnstile) { setTimeout(captchaKur, 200); return; }
+    captchaId = turnstile.render('#captcha', { sitekey: A.TURNSTILE_SITE_KEY, theme: 'dark', size: 'flexible', language: 'tr',
+      callback: function(t){ captchaToken = t; }, 'expired-callback': function(){ captchaToken = null; },
+      'error-callback': function(){ captchaToken = null; } });
+  }
+  function captchaYenile(){ captchaToken = null; try { if (captchaId !== null) turnstile.reset(captchaId); } catch (e) {} }
+  async function captchaBekle(){
+    if (!A.TURNSTILE_SITE_KEY) return null;
+    for (let i = 0; i < 50 && !captchaToken; i++) await new Promise(r => setTimeout(r, 200));
+    if (!captchaToken) throw new Error('Güvenlik doğrulaması tamamlanmadı — kutucuğu işaretleyip tekrar dene.');
+    return captchaToken;
+  }
+  captchaKur();
+
   $('form').addEventListener('submit', async ev => {
     ev.preventDefault();
     const eposta = $('eposta').value.trim(), sifre = $('sifre').value;
     $('gonder').disabled = true; mesaj('');
     try {
+      const captchaTokenSu = await captchaBekle();
       if (kip === 'kayit') {
         const { data, error } = await sb.auth.signUp({ email: eposta, password: sifre, options: {
+          captchaToken: captchaTokenSu,
           data: { ad: $('ad').value.trim(), firma: $('firma').value.trim() },
           emailRedirectTo: location.origin + location.pathname } });
         if (error) throw error;
         if (!data.session) mesaj('Kayıt alındı. E-postana gelen bağlantıyla adresini doğrula; ardından hesabın yönetici onayıyla açılacak.', 'tamam');
       } else {
-        const { error } = await sb.auth.signInWithPassword({ email: eposta, password: sifre });
+        const { error } = await sb.auth.signInWithPassword({ email: eposta, password: sifre, options: { captchaToken: captchaTokenSu } });
         if (error) throw error;
       }
     } catch (e) { mesaj(hataMetni(e), 'hata'); }
-    finally { $('gonder').disabled = false; }
+    finally { $('gonder').disabled = false; captchaYenile(); }
   });
 
   $('unuttum').addEventListener('click', async () => {
     const eposta = $('eposta').value.trim();
     if (!eposta) { mesaj('Önce e-posta adresini yaz.', 'hata'); $('eposta').focus(); return; }
-    const { error } = await sb.auth.resetPasswordForEmail(eposta, { redirectTo: location.origin + location.pathname });
+    let tk; try { tk = await captchaBekle(); } catch (e) { mesaj(e.message, 'hata'); return; }
+    const { error } = await sb.auth.resetPasswordForEmail(eposta, { redirectTo: location.origin + location.pathname, captchaToken: tk });
+    captchaYenile();
     mesaj(error ? hataMetni(error) : 'Şifre sıfırlama bağlantısı e-postana gönderildi.', error ? 'hata' : 'tamam');
   });
 

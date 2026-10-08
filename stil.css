@@ -237,3 +237,7 @@ tbody tr,tbody tr td{transition:background .14s}
 @keyframes islDon{to{transform:rotate(360deg)}}
 @keyframes islGir{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion:reduce){#isleniyor .isl-donen{animation-duration:2.4s}}
+
+/* Robot koruması kutusu (Turnstile) — giriş formunda düğmenin üstünde */
+.captcha{margin-top:14px;min-height:0}
+.captcha:empty{display:none}

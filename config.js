@@ -6,6 +6,8 @@ window.AHU_AYAR = {
   SUPABASE_URL: 'https://eqekvkfbysjzueywfiya.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_M2sVgklDJcK-6dcSNEfkcQ_PLsLY-mJ',
   KOVA: 'uygulama',                       // programların durduğu özel depolama kovası
+  // Cloudflare Turnstile (robot koruması) — SİTE anahtarı herkese açıktır; GİZLİ anahtar yalnız Supabase'de
+  TURNSTILE_SITE_KEY: '0x4AAAAAAFRqsqcVe9JvrZkv',
   LISANS_KONTROL_DK: 30,                  // açıkken lisans kaç dakikada bir yeniden sorulur
 
   // PROGRAMLAR — renk = kartın ve sekme simgesinin rengi; simge ikonlar.js'te (anahtar = id).

@@ -7,3 +7,7 @@ uygulama/
 supabase/functions/
 supabase/.temp/
 
+
+# Program kaynaklarý GitHub'a (herkese açýk) ASLA girmez — Supabase özel kovasýna yüklenir
+yeni programlar/
+

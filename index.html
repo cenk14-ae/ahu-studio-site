@@ -228,10 +228,10 @@
     if (d.yonetici && !prm.get('ac')) { anaSayfa(oturum, d); return; }
 
     // Program: ?ac=<id> (yalnız yönetici seçer) — yoksa listenin ilki
-    const program = A.PROGRAMLAR.find(p => p.id === prm.get('ac')) || A.PROGRAMLAR[0];
+    const program = (d.yonetici && A.PROGRAMLAR.find(p => p.id === prm.get('ac'))) || A.PROGRAMLAR[0];
     // tam lisans ?surum=sade ile sade sürümü de açabilir
     const surum = (d.surum === 'tam' && prm.get('surum') !== 'sade') ? 'tam' : 'sade';
-    const dosyaAdi = program.dosyalar[surum] || program.dosyalar.tam || program.dosyalar.sade;
+    const dosyaAdi = program.dosyalar[surum] || program.dosyalar.tam || program.dosyalar.sade || Object.values(program.dosyalar)[0];
     $('menu_ana').hidden = !d.yonetici;
     $('lisans_baslik').textContent = 'Hoş geldin';
     $('lisans_metin').textContent = d.bitis ? 'Lisans bitişi: ' + trTarih(d.bitis) : 'Süresiz lisans';

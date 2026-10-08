@@ -225,15 +225,25 @@
     }
 
     const prm = new URLSearchParams(location.search);
-    // YÖNETİCİ: ?ac= verilmemişse önce ANA SAYFA (program seçimi + yönetim)
-    if (d.yonetici && !prm.get('ac')) { anaSayfa(oturum, d); return; }
+    // Görebildiği programlar: yönetici hepsini, kullanıcı yönetimde açılanları (d.programlar).
+    // Asıl kapı depo kuralıdır (dosya_izni); bu süzgeç yalnız ekranda olmayanı göstermemek için.
+    const izinli = d.yonetici ? A.PROGRAMLAR : A.PROGRAMLAR.filter(p => (d.programlar || []).indexOf(p.id) >= 0);
+    if (!izinli.length) {
+      $('lisans_baslik').textContent = 'Program atanmadı';
+      $('lisans_metin').textContent = 'Lisansın geçerli ama henüz sana bir program açılmadı. Cenk Altınay ile iletişime geç.';
+      $('yenile').hidden = false;
+      return;
+    }
+    const secilen = izinli.find(p => p.id === prm.get('ac'));
+    // Ana sayfa: yöneticide her zaman, kullanıcıda birden çok programı varsa (?ac= yoksa)
+    if (!secilen && (d.yonetici || izinli.length > 1)) { anaSayfa(oturum, d, izinli); return; }
 
-    // Program: ?ac=<id> (yalnız yönetici seçer) — yoksa listenin ilki
-    const program = (d.yonetici && A.PROGRAMLAR.find(p => p.id === prm.get('ac'))) || A.PROGRAMLAR[0];
+    const program = secilen || izinli[0];
+    $('menu_ana').hidden = !(d.yonetici || izinli.length > 1);
+    ANTET_AD = d.ad || '';
     // tam lisans ?surum=sade ile sade sürümü de açabilir
     const surum = (d.surum === 'tam' && prm.get('surum') !== 'sade') ? 'tam' : 'sade';
     const dosyaAdi = program.dosyalar[surum] || program.dosyalar.tam || program.dosyalar.sade || Object.values(program.dosyalar)[0];
-    $('menu_ana').hidden = !d.yonetici;
     $('lisans_baslik').textContent = 'Hoş geldin';
     $('lisans_metin').textContent = d.bitis ? 'Lisans bitişi: ' + trTarih(d.bitis) : 'Süresiz lisans';
     $('yukleniyor').hidden = false;
@@ -243,6 +253,7 @@
       const metin = await blob.text();
       const url = URL.createObjectURL(new Blob([metin], { type: 'text/html;charset=utf-8' }));
       const f = $('uygulama');
+      f.onload = programYuklendi;
       f.src = url;
       f.hidden = false;
       $('giris_sahne').hidden = true;
@@ -272,15 +283,43 @@
     }, (A.LISANS_KONTROL_DK || 30) * 60000);
   }
 
-  // Yöneticinin ana sayfası: her program bir kart; sürümü olan programda tam/sade seçimi
-  function anaSayfa(oturum, d){
+  // Program yüklenince (aynı köken: blob, bu sayfa açtı):
+  //  · ANTET: AHU Studio'nun Excel antetindeki ÇİZEN hücresi kabuğun AHU_CIZEN'ini okur
+  //    (eskiden şifre kapısı yazıyordu) → kullanıcının Ad Soyad'ı.
+  //  · ANA SAYFA bağlantıları: programların kendi "Ana sayfa" düğmesi göreli adrese gider;
+  //    blob belgede göreli adres çözülmez (düğme geçersiz kalıyordu) → burada yakalanır.
+  let ANTET_AD = '';
+  function programYuklendi(){
+    const f = $('uygulama');
+    try { f.contentWindow.AHU_CIZEN = ANTET_AD; } catch (e) {}
+    try {
+      f.contentDocument.addEventListener('click', function(e){
+        const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+        if (!a) return;
+        const h = a.getAttribute('href');
+        if (h === '/' || h === './' || h === 'index.html' || a.id === 'hm-ev') {
+          e.preventDefault(); e.stopPropagation();
+          location.href = location.origin + location.pathname.replace(/[^/]*$/, '');
+        }
+      }, true);
+    } catch (e) {}
+  }
+
+  // Ana sayfa: her program bir kart. Yönetici hepsini + tam/sade seçimini + yönetimi görür;
+  // kullanıcı yalnız kendisine açılan programları (AHU'da kendi sürümü, tek düğme).
+  function anaSayfa(oturum, d, izinli){
+    if (!d.yonetici) {
+      document.querySelectorAll('#ana_sayfa .ana-baslik')[1].hidden = true;
+      document.querySelectorAll('#ana_sayfa .kartlar')[1].hidden = true;
+      document.querySelector('#ana_sayfa .marka .alt').textContent = '· Programlarım';
+    }
     $('giris_sahne').hidden = true;
     $('ana_sayfa').hidden = false;
     $('ana_kim').textContent = oturum.user.email;
     document.title = 'Ana sayfa · Cenk Altınay';
     const kac = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    $('ana_programlar').innerHTML = A.PROGRAMLAR.map(p => {
-      const surumler = Object.keys(p.dosyalar);
+    $('ana_programlar').innerHTML = izinli.map(p => {
+      const surumler = d.yonetici ? Object.keys(p.dosyalar) : [Object.keys(p.dosyalar)[0]];
       const dugmeler = surumler.length > 1
         ? surumler.map((s, i) => '<a class="dugme kucuk' + (i ? ' ikincil' : '') + '" href="?ac=' + encodeURIComponent(p.id) + '&surum=' + s + '">' +
             (s === 'tam' ? 'Tam sürüm' : s === 'sade' ? 'Sade sürüm' : kac(s)) + '</a>').join('')

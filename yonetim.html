@@ -95,6 +95,16 @@
   $('ara').addEventListener('input', ciz);
   $('suz').addEventListener('change', ciz);
 
+  // Kullanıcının açabildiği programlar — satırın altında aç/kapat düğmeleri (Kaydet ile yazılır)
+  function programSatiri(l){
+    if (yoneticiler.has(l.user_id)) return '<tr class="prog-satir" data-id="' + l.user_id + '"><td colspan="8" class="ufak">Programlar: yönetici hepsini açar</td></tr>';
+    const acik = new Set(l.programlar || []);
+    return '<tr class="prog-satir" data-id="' + l.user_id + '"><td colspan="8"><span class="ufak" style="margin-right:8px">Programlar:</span>' +
+      A.PROGRAMLAR.map(p => '<button type="button" class="prog' + (acik.has(p.id) ? ' acik' : '') + '" data-prog="' + kac(p.id) +
+        '" aria-pressed="' + acik.has(p.id) + '" style="--pr:' + kac(p.renk || '#4d8dff') + '" title="Aç/kapat — Kaydet ile yazılır">' + kac(p.ad) + '</button>').join('') +
+      '</td></tr>';
+  }
+
   function ciz(){
     const q = $('ara').value.trim().toLocaleLowerCase('tr'), s = $('suz').value;
     const gor = liste.filter(l => (!s || durum(l)[0] === s) &&
@@ -104,7 +114,7 @@
     $('satirlar').innerHTML = gor.map(l => {
       const [c, t] = durum(l);
       return '<tr data-id="' + l.user_id + '">' +
-        '<td><div class="eposta">' + kac(l.eposta) + '</div><div class="ufak">' + kac([l.ad, l.firma].filter(Boolean).join(' · ') || '—') + '</div></td>' +
+        '<td><div class="eposta">' + kac(l.eposta) + '</div><input data-alan="ad" value="' + kac(l.ad) + '" placeholder="Ad Soyad (antete yazılır)" title="Excel antetinin ÇİZEN hücresine yazılır" style="margin:4px 0 2px;min-width:180px"><div class="ufak">' + kac(l.firma || '') + '</div></td>' +
         '<td><span class="rozet ' + c + '">' + t + '</span></td>' +
         '<td><input type="checkbox" data-alan="aktif"' + (l.aktif ? ' checked' : '') + ' style="width:auto"></td>' +
         (yoneticiler.has(l.user_id)
@@ -114,20 +124,26 @@
         '<td><input data-alan="notlar" value="' + kac(l.notlar) + '" placeholder="—" style="min-width:140px"></td>' +
         '<td class="ufak" style="white-space:nowrap">' + tarihSaat(l.son_giris) + '</td>' +
         '<td><button class="dugme kucuk" data-is="kaydet" type="button">Kaydet</button></td>' +
-        '</tr>';
+        '</tr>' + programSatiri(l);
     }).join('') || '<tr><td colspan="8" class="ufak">Kayıt yok.</td></tr>';
   }
 
   $('satirlar').addEventListener('click', async e => {
+    const pr = e.target.closest('button[data-prog]');
+    if (pr) { pr.classList.toggle('acik'); pr.setAttribute('aria-pressed', pr.classList.contains('acik')); return; }
     const b = e.target.closest('button[data-is]'); if (!b) return;
     const tr = b.closest('tr'), id = tr.dataset.id;
+    const ptr = $('satirlar').querySelector('tr.prog-satir[data-id="' + id + '"]');
     if (b.dataset.is === 'yil') { const i = tr.querySelector('[data-alan=bitis]'); i.value = yilEkle(i.value); return; }
     const deg = {
       aktif:  tr.querySelector('[data-alan=aktif]').checked,
       surum:  tr.querySelector('[data-alan=surum]').value,
       bitis:  tr.querySelector('[data-alan=bitis]').value || null,
-      notlar: tr.querySelector('[data-alan=notlar]').value.trim() || null
+      notlar: tr.querySelector('[data-alan=notlar]').value.trim() || null,
+      ad:     tr.querySelector('[data-alan=ad]').value.trim() || null
     };
+    if (ptr && ptr.querySelector('button[data-prog]'))
+      deg.programlar = Array.from(ptr.querySelectorAll('button[data-prog].acik')).map(x => x.dataset.prog);
     b.disabled = true;
     const { error } = await sb.from('lisanslar').update(deg).eq('user_id', id);
     b.disabled = false;

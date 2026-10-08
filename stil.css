@@ -74,6 +74,15 @@ td .ufak{color:var(--t-3);font-size:12px}
 .dosya b{display:block;margin-bottom:4px}
 .dosya .ufak{color:var(--t-3);font-size:12px;margin-bottom:10px;display:block}
 .dosya input[type=file]{font-size:12px;padding:6px}
+/* yönetim: kullanıcının program izinleri (satırın altı) */
+tr.prog-satir td{padding-top:0;border-bottom:1px solid var(--line-2)}
+tbody tr:not(.prog-satir) td{border-bottom:0}
+button.prog{--pr:var(--accent);background:transparent;border:1px solid var(--line-2);color:var(--t-3);border-radius:99px;
+  padding:3px 10px;margin:3px 4px 3px 0;font:inherit;font-size:12px;cursor:pointer}
+button.prog:hover{color:var(--t-1);border-color:var(--line-3)}
+button.prog.acik{color:var(--pr);border-color:var(--pr);background:color-mix(in srgb,var(--pr) 14%,transparent)}
+button.prog.acik::before{content:'✓ '}
+
 /* yöneticinin ana sayfası */
 .ana-baslik{font-size:13px;font-weight:600;color:var(--t-2);text-transform:uppercase;letter-spacing:.6px;margin:8px 0 12px}
 .kartlar{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:28px}

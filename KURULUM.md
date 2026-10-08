@@ -51,6 +51,8 @@ Natro'nun kendi park/yönlendirme A kayıtları varsa silinir. Yayılması 10 dk
 | **Pro** | tam sürüm (AHU Studio'nun tamamı) | Yönetim → Rol: *Pro* |
 | **Normal** | sade sürüm | Yönetim → Rol: *Normal* (kayıtta varsayılan) |
 
+**Program izinleri:** her kullanıcının açabildiği programlar `lisanslar.programlar` (Yönetim → satırın altındaki aç/kapat düğmeleri; yeni kayıt yalnız AHU Studio ile başlar). Program ↔ dosya eşlemesi `programlar` tablosunda (`supabase/2-program-izinleri.sql`), ad/simge/renk `config.js` + `ikonlar.js`'te — **kimlikler iki yerde aynı olmalı**. Birden çok programı olan kullanıcı girişte kendi ana sayfasını görür, tek programı olan doğrudan açar. **Antet:** AHU Studio Excel antetinin ÇİZEN hücresi kullanıcının *Ad Soyad*'ından gelir (Yönetim'de düzenlenir).
+
 Veritabanında rol `lisanslar.surum` alanıdır (`tam` = Pro, `sade` = Normal); izin depo kuralında (`dosya_izni`) uygulanır.
 
 ## Günlük kullanım

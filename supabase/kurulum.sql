@@ -137,7 +137,7 @@ create policy uygulama_sil on storage.objects for delete
 -- 7) KENDİNİ YÖNETİCİ YAP — sitede önce bu e-postayla KAYIT OL, sonra yalnız bu
 --    bloğu tekrar çalıştır. Kendi lisansın da tam + süresiz + aktif olur.
 insert into public.yoneticiler (user_id)
-select id from auth.users where email = 'altinaycenkaltinay@gmail.com'
+select id from auth.users where email = 'cenk.altinay@gmail.com'
 on conflict do nothing;
 
 update public.lisanslar set aktif = true, surum = 'tam', bitis = null

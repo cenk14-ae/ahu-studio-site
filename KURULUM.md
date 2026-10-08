@@ -40,7 +40,7 @@ geçerli lisansı olana verir (sade lisans → sade dosya, tam lisans → ikisi)
 Natro'nun kendi park/yönlendirme A kayıtları varsa silinir. Yayılması 10 dk – birkaç saat.
 
 ## 4. İlk giriş
-1. Sitede **Kayıt ol** (altinaycenkaltinay@gmail.com) → e-postayı doğrula.
+1. Sitede **Kayıt ol** (cenk.altinay@gmail.com) → e-postayı doğrula.
 2. SQL Editor'de `kurulum.sql`'in **7. bloğunu** tekrar çalıştır → yönetici + tam lisans.
 3. Sitede giriş → **Yönetim** → *Program dosyaları*: `index.html` ve `index-sade.html`'i yükle.
 

@@ -203,11 +203,14 @@
     // tam lisans ?surum=sade ile sade sürümü de açabilir
     const istek = new URLSearchParams(location.search).get('surum');
     const surum = (d.surum === 'tam' && istek !== 'sade') ? 'tam' : 'sade';
+    // Yönetici ?deneme=ince ile sunucu çekirdekli sürümü dener (depo kuralı bu adları yalnız yöneticiye verir)
+    const deneme = d.yonetici && new URLSearchParams(location.search).get('deneme') === 'ince';
+    const dosyaAdi = deneme ? A.DOSYALAR[surum].replace('.html', '-ince.html') : A.DOSYALAR[surum];
     $('lisans_baslik').textContent = 'Hoş geldin';
     $('lisans_metin').textContent = d.bitis ? 'Lisans bitişi: ' + trTarih(d.bitis) : 'Süresiz lisans';
     $('yukleniyor').hidden = false;
     try {
-      const { data: blob, error } = await sb.storage.from(A.KOVA).download(A.DOSYALAR[surum]);
+      const { data: blob, error } = await sb.storage.from(A.KOVA).download(dosyaAdi);
       if (error) throw error;
       const metin = await blob.text();
       const url = URL.createObjectURL(new Blob([metin], { type: 'text/html;charset=utf-8' }));

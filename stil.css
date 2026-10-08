@@ -74,6 +74,9 @@ td .ufak{color:var(--t-3);font-size:12px}
 .dosya b{display:block;margin-bottom:4px}
 .dosya .ufak{color:var(--t-3);font-size:12px;margin-bottom:10px;display:block}
 .dosya input[type=file]{font-size:12px;padding:6px}
+/* tek oturum perdesi — programın üstünü örter */
+#oturum_perde{position:fixed;inset:0;z-index:20;background:rgba(10,12,15,.92);backdrop-filter:blur(4px)}
+
 /* yönetim: kullanıcının program izinleri (satırın altı) */
 tr.prog-satir td{padding-top:0;border-bottom:1px solid var(--line-2)}
 tbody tr:not(.prog-satir) td{border-bottom:0}

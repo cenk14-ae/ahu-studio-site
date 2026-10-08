@@ -105,6 +105,18 @@
 </div>
 <div id="serit" hidden></div>
 
+<!-- TEK OTURUM: hesap başka cihazda açılınca bu cihazın üstü örtülür (program kapatılmaz) -->
+<div class="sahne" id="oturum_perde" hidden>
+  <div class="kart">
+    <div class="marka"><span class="isaret"></span>Cenk Altınay</div>
+    <h1>Hesabın başka bir cihazda açıldı</h1>
+    <p class="aciklama">Bir hesap aynı anda yalnız tek cihazda kullanılabilir. Burada kaydedilmemiş bir işin varsa
+      "Bu cihazda devam et" ile geri alabilirsin — o zaman öteki cihaz kilitlenir.</p>
+    <button class="dugme tam" id="oturum_devam" type="button">Bu cihazda devam et</button>
+    <p class="alt-not"><button class="baglanti" id="oturum_cikis" type="button">Çıkış</button></p>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="ikonlar.js"></script>
@@ -224,6 +236,15 @@
       return;
     }
 
+    // TEK OTURUM: bu cihaz aktif oturum olur, öteki cihazlar kilitlenir (yönetici muaf)
+    if (!d.yonetici) {
+      try {
+        await sb.rpc('oturum_baslat', { cihaz: navigator.userAgent });
+        sb.auth.signOut({ scope: 'others' }).then(function(){}, function(){});   // öteki cihazların yenileme belirteçleri düşer
+      } catch (e) {}
+      oturumNabzi();
+    }
+
     const prm = new URLSearchParams(location.search);
     // Görebildiği programlar: yönetici hepsini, kullanıcı yönetimde açılanları (d.programlar).
     // Asıl kapı depo kuralıdır (dosya_izni); bu süzgeç yalnız ekranda olmayanı göstermemek için.
@@ -285,6 +306,28 @@
       } catch (e) { /* bağlantı yoksa sessiz geç */ }
     }, (A.LISANS_KONTROL_DK || 30) * 60000);
   }
+
+  // TEK OTURUM nabzı: dakikada bir ve sekme öne gelince sorulur. Aktif oturum değilsek perde
+  // iner; program KAPATILMAZ (kaydedilmemiş iş kaybolmasın). Asıl kapı depo kuralı + sunucu.
+  let nabizSayac = null;
+  function oturumNabzi(){
+    clearInterval(nabizSayac);
+    const sor = async () => {
+      try {
+        const { data, error } = await sb.rpc('oturum_nabiz');
+        if (!error && data === false) $('oturum_perde').hidden = false;
+      } catch (e) { /* bağlantı yoksa sessiz geç */ }
+    };
+    nabizSayac = setInterval(sor, 45000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) sor(); });
+  }
+  $('oturum_devam').addEventListener('click', async () => {
+    try {
+      const { data } = await sb.rpc('oturum_baslat', { cihaz: navigator.userAgent });
+      if (data) $('oturum_perde').hidden = true;
+    } catch (e) { mesaj(hataMetni(e), 'hata'); }
+  });
+  $('oturum_cikis').addEventListener('click', cikis);
 
   // Program yüklenince (aynı köken: blob, bu sayfa açtı):
   //  · ANTET: AHU Studio'nun Excel antetindeki ÇİZEN hücresi kabuğun AHU_CIZEN'ini okur

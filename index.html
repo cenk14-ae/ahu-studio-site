@@ -281,7 +281,9 @@
     ANTET_AD = d.ad || '';
     // tam lisans ?surum=sade ile sade sürümü de açabilir
     const surum = (d.surum === 'tam' && prm.get('surum') !== 'sade') ? 'tam' : 'sade';
-    const dosyaAdi = program.dosyalar[surum] || program.dosyalar.tam || program.dosyalar.sade || Object.values(program.dosyalar)[0];
+    let dosyaAdi = program.dosyalar[surum] || program.dosyalar.tam || program.dosyalar.sade || Object.values(program.dosyalar)[0];
+    // Yönetici ?deneme=ince ile yeni sürümü canlıya almadan dener (depo bu adları yalnız yöneticiye verir)
+    if (d.yonetici && prm.get('deneme') === 'ince' && program.id === 'ahu') dosyaAdi = dosyaAdi.replace(/\.html$/, '-ince.html');
     $('lisans_baslik').textContent = 'Hoş geldin';
     $('lisans_metin').textContent = d.bitis ? 'Lisans bitişi: ' + trTarih(d.bitis) : 'Süresiz lisans';
     $('yukleniyor').hidden = false;

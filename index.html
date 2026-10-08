@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ALTINAY</title>
 <meta name="description" content="Klima santrali kapak yerleşimi, DXF ve Excel üretimi">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234d8dff'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="stil.css">
@@ -21,6 +21,8 @@
 </style>
 </head>
 <body>
+<!-- açılış perdesinin zemini: betik gelmeden içerik görünmesin (efekt.js noktaları ekler) -->
+<div id="efekt-perde"></div>
 
 <!-- Giriş ekranı arka planı (arka-plan.js) — program/ana sayfa açılınca durur ve gizlenir -->
 <canvas id="kozmik-bg" aria-hidden="true"></canvas>
@@ -134,6 +136,7 @@
 <script src="oturum-kapisi.js"></script>
 <script src="ikonlar.js"></script>
 <script src="arka-plan.js"></script>
+<script src="efekt.js"></script>
 <script>
 (function(){
   'use strict';
@@ -145,10 +148,23 @@
     return;
   }
   const sb = window.supabase.createClient(A.SUPABASE_URL, A.SUPABASE_ANON_KEY);
+  // AÇILIŞ PERDESİ (efekt.js): ekranın SON hâli hazır olunca kalkar — program açılıyorsa program
+  // tamamen hazır olunca. Böylece 'önce içerik, sonra animasyon, sonra yine içerik' olmaz.
+  const PERDE = window.Efekt ? Efekt.perde() : { bitir: function (cb) { if (cb) cb(); } };
+  let perdeKalkti = false;
+  function perdeKaldir(cb){ if (perdeKalkti) { if (cb) cb(); return; } perdeKalkti = true; PERDE.bitir(cb); }
+  setTimeout(function(){ perdeKaldir(); }, 15000);   // hiçbir durumda perdede asılı kalmasın
   let kip = 'giris', acik = false, sayac = null, kontrolde = false;
 
   function mesaj(m, tur){ const e = $('mesaj'); e.textContent = m || ''; e.className = 'mesaj' + (m ? ' goster ' + (tur||'bilgi') : ''); }
-  function goster(bolum){ ['bolum_form','bolum_yeni','bolum_lisans','bolum_acik'].forEach(b => $(b).hidden = (b !== bolum)); }
+  function goster(bolum){
+    ['bolum_form','bolum_yeni','bolum_lisans','bolum_acik'].forEach(b => $(b).hidden = (b !== bolum));
+    // 'bolum_lisans' ara durumdur (lisans soruluyor / program iniyor) — perde onda kalkmaz
+    if (bolum !== 'bolum_lisans') {
+      if (perdeKalkti) { if (window.Efekt) Efekt.beam(); }
+      else perdeKaldir(function(){ if (window.Efekt) Efekt.giris('#giris_sahne .kart'); });
+    }
+  }
   // Arka plan yalnız giriş ekranında: program ya da ana sayfa açılınca GPU'yu boşa yormasın
   function arkaPlan(acik){
     const c = $('kozmik-bg'), p = document.querySelector('.kozmik-perde');
@@ -245,7 +261,7 @@
     let d;
     // rpc tembeldir: then() bağlanmazsa istek HİÇ gitmez
     try { sb.rpc('giris_kaydet').then(function(){}, function(){}); d = await durumSor(); }
-    catch (e) { $('lisans_baslik').textContent = 'Bağlantı hatası'; mesaj(hataMetni(e), 'hata'); $('yenile').hidden = false; return; }
+    catch (e) { $('lisans_baslik').textContent = 'Bağlantı hatası'; mesaj(hataMetni(e), 'hata'); $('yenile').hidden = false; perdeKaldir(); return; }
     $('yonetim_bag').hidden = !d.yonetici;
     $('menu_yonetim').hidden = !d.yonetici;
 
@@ -257,7 +273,7 @@
         $('lisans_baslik').textContent = 'Onay bekleniyor';
         $('lisans_metin').textContent = 'Hesabın oluşturuldu, lisansın henüz etkinleştirilmedi. Onaylandığında bu sayfayı yenilemen yeterli.';
       }
-      $('yenile').hidden = false;
+      $('yenile').hidden = false; perdeKaldir();
       return;
     }
 
@@ -281,7 +297,7 @@
     if (!izinli.length) {
       $('lisans_baslik').textContent = 'Program atanmadı';
       $('lisans_metin').textContent = 'Lisansın geçerli ama henüz sana bir program açılmadı. Cenk Altınay ile iletişime geç.';
-      $('yenile').hidden = false;
+      $('yenile').hidden = false; perdeKaldir();
       return;
     }
     const secilen = izinli.find(p => p.id === prm.get('ac'));
@@ -308,7 +324,7 @@
         : await blob.text();
       const url = URL.createObjectURL(new Blob([metin], { type: 'text/html;charset=utf-8' }));
       const f = $('uygulama');
-      f.onload = programYuklendi;
+      f.onload = function(){ programYuklendi(); programHazir(function(){ perdeKaldir(); }); };
       f.src = url;
       f.hidden = false;
       $('giris_sahne').hidden = true; arkaPlan(false);
@@ -322,7 +338,7 @@
       $('yukleniyor').hidden = true;
       $('lisans_baslik').textContent = 'Program yüklenemedi';
       mesaj('Program dosyası alınamadı: ' + hataMetni(e) + (d.yonetici ? ' — Yönetim sayfasından programı yüklediğinden emin ol.' : ''), 'hata');
-      $('yenile').hidden = false;
+      $('yenile').hidden = false; perdeKaldir();
     }
   }
 
@@ -430,6 +446,29 @@
     } catch (e) {}
   }
 
+  // Program HAZIR mı: AHU Studio'da 3B Tasarım (f0) kendi açılış perdesini oynatır; site perdesi
+  // zaten oynadığı için onu görünmeden KISA KESERİZ (f0'ın kendi 'tuşa basınca kapan' yolu) ve
+  // f0 perdesi kalkınca site perdesini kaldırırız. Başka programda kabuk yüklenince hazırdır.
+  function programHazir(cb){
+    const f = $('uygulama'), t0 = Date.now();
+    (function bak(){
+      let hazir = false;
+      try {
+        const kab = f.contentDocument, f0 = kab && kab.getElementById('f0');
+        if (!f0) hazir = !!kab && kab.readyState === 'complete';
+        else {
+          const d0 = f0.contentDocument, w0 = f0.contentWindow;
+          if (d0 && d0.readyState === 'complete' && d0.body && d0.body.children.length) {
+            const sp = d0.getElementById('tema-splash');
+            if (!sp) hazir = true;
+            else if (sp.classList.contains('oyna')) w0.dispatchEvent(new Event('keydown'));
+          }
+        }
+      } catch (e) { hazir = true; }
+      if (hazir || Date.now() - t0 > 9000) cb(); else setTimeout(bak, 80);
+    })();
+  }
+
   // Ana sayfa: her program bir kart. Yönetici hepsini + tam/sade seçimini + yönetimi görür;
   // kullanıcı yalnız kendisine açılan programları (AHU'da kendi sürümü, tek düğme).
   function anaSayfa(oturum, d, izinli){
@@ -441,6 +480,7 @@
     $('giris_sahne').hidden = true; arkaPlan(false);
     $('ana_sayfa').hidden = false;
     $('ana_kim').textContent = oturum.user.email;
+    perdeKaldir(function(){ if (window.Efekt) Efekt.giris('#ana_sayfa .pkart'); });
     document.title = 'ALTINAY · Ana sayfa';
     const kac = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     $('ana_programlar').innerHTML = izinli.map(p => {

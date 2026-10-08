@@ -61,6 +61,14 @@
       </form>
     </section>
 
+    <!-- HESAP ZATEN AÇIK (tek oturum) -->
+    <section id="bolum_acik" hidden>
+      <h1>Hesap zaten açık</h1>
+      <p class="aciklama" id="acik_metin"></p>
+      <button class="dugme tam" id="acik_ac" type="button">Yine de burada aç</button>
+      <button class="dugme tam ikincil" id="acik_vazgec" type="button" style="margin-top:10px">Vazgeç</button>
+    </section>
+
     <!-- LİSANS DURUMU -->
     <section id="bolum_lisans" hidden>
       <h1 id="lisans_baslik">Lisans</h1>
@@ -109,10 +117,10 @@
 <div class="sahne" id="oturum_perde" hidden>
   <div class="kart">
     <div class="marka"><span class="isaret"></span>Cenk Altınay</div>
-    <h1>Hesabın başka bir cihazda açıldı</h1>
-    <p class="aciklama">Bir hesap aynı anda yalnız tek cihazda kullanılabilir. Burada kaydedilmemiş bir işin varsa
-      "Bu cihazda devam et" ile geri alabilirsin — o zaman öteki cihaz kilitlenir.</p>
-    <button class="dugme tam" id="oturum_devam" type="button">Bu cihazda devam et</button>
+    <h1>Oturum kapatıldı</h1>
+    <p class="aciklama">Hesabın başka bir cihazda açıldı. Bir hesap aynı anda tek cihazda kullanılabildiği için
+      buradaki program kapatıldı.</p>
+    <button class="dugme tam" id="oturum_yeniden" type="button">Yeniden aç</button>
     <p class="alt-not"><button class="baglanti" id="oturum_cikis" type="button">Çıkış</button></p>
   </div>
 </div>
@@ -134,7 +142,7 @@
   let kip = 'giris', acik = false, sayac = null, kontrolde = false;
 
   function mesaj(m, tur){ const e = $('mesaj'); e.textContent = m || ''; e.className = 'mesaj' + (m ? ' goster ' + (tur||'bilgi') : ''); }
-  function goster(bolum){ ['bolum_form','bolum_yeni','bolum_lisans'].forEach(b => $(b).hidden = (b !== bolum)); }
+  function goster(bolum){ ['bolum_form','bolum_yeni','bolum_lisans','bolum_acik'].forEach(b => $(b).hidden = (b !== bolum)); }
   function hataMetni(e){
     const m = (e && e.message) || String(e);
     if (/Invalid login credentials/i.test(m)) return 'E-posta ya da şifre hatalı.';
@@ -193,7 +201,12 @@
     if (data.session) lisansaBak(data.session);
   });
 
-  async function cikis(){ await sb.auth.signOut(); location.reload(); }
+  // Çıkış: oturum bu cihazınsa boşaltılır (öteki cihaz sonra uyarısız girebilsin)
+  async function cikis(){
+    try { await sb.rpc('oturum_bitir'); } catch (e) {}
+    await sb.auth.signOut({ scope: 'local' });
+    location.reload();
+  }
   $('cikis').addEventListener('click', cikis);
   $('menu_cikis').addEventListener('click', cikis);
   $('yenile').addEventListener('click', async () => { const { data } = await sb.auth.getSession(); if (data.session) lisansaBak(data.session); });
@@ -236,13 +249,17 @@
       return;
     }
 
-    // TEK OTURUM: bu cihaz aktif oturum olur, öteki cihazlar kilitlenir (yönetici muaf)
+    // TEK OTURUM (yönetici muaf): hesap başka bir cihazda CANLIYSA önce uyar, açma.
+    // "Yine de burada aç" (OTURUM_ZORLA) → bu cihaz aktif olur, eskisi Realtime ile ANINDA kapanır.
     if (!d.yonetici) {
+      let od = null;
+      try { const r = await sb.rpc('oturum_durumu'); od = r.data; } catch (e) {}
+      if (od && od.baska_acik && !OTURUM_ZORLA) { acikUyarisi(od); return; }
       try {
         await sb.rpc('oturum_baslat', { cihaz: navigator.userAgent });
         sb.auth.signOut({ scope: 'others' }).then(function(){}, function(){});   // öteki cihazların yenileme belirteçleri düşer
       } catch (e) {}
-      oturumNabzi();
+      oturumIzle(oturum);
     }
 
     const prm = new URLSearchParams(location.search);
@@ -307,27 +324,64 @@
     }, (A.LISANS_KONTROL_DK || 30) * 60000);
   }
 
-  // TEK OTURUM nabzı: dakikada bir ve sekme öne gelince sorulur. Aktif oturum değilsek perde
-  // iner; program KAPATILMAZ (kaydedilmemiş iş kaybolmasın). Asıl kapı depo kuralı + sunucu.
-  let nabizSayac = null;
-  function oturumNabzi(){
-    clearInterval(nabizSayac);
-    const sor = async () => {
-      try {
-        const { data, error } = await sb.rpc('oturum_nabiz');
-        if (!error && data === false) $('oturum_perde').hidden = false;
-      } catch (e) { /* bağlantı yoksa sessiz geç */ }
-    };
-    nabizSayac = setInterval(sor, 45000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) sor(); });
+  // ---------------- TEK OTURUM ----------------
+  // Asıl kapı veritabanındadır (depo kuralı + sunucu çekirdeği aktif oturumu şart koşar);
+  // buradaki akış kullanıcıya ne olduğunu söyler.
+  let OTURUM_ZORLA = false, nabizSayac = null, kanal = null, kapandi = false;
+
+  // Erişim belirtecindeki session_id (bu cihazın oturum kimliği)
+  function oturumKimligi(oturum){
+    try { return JSON.parse(atob(oturum.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).session_id || ''; }
+    catch (e) { return ''; }
   }
-  $('oturum_devam').addEventListener('click', async () => {
-    try {
-      const { data } = await sb.rpc('oturum_baslat', { cihaz: navigator.userAgent });
-      if (data) $('oturum_perde').hidden = true;
-    } catch (e) { mesaj(hataMetni(e), 'hata'); }
+  function cihazAdi(ua){
+    ua = ua || '';
+    const os = /iPhone|iPad/.test(ua) ? 'iPhone/iPad' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : 'bir cihaz';
+    const tb = /OPR\//.test(ua) ? 'Opera' : /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '';
+    return tb ? tb + ' · ' + os : os;
+  }
+
+  // İkinci cihaz: uyar, açma
+  function acikUyarisi(od){
+    goster('bolum_acik');
+    const saat = od.zaman ? new Date(od.zaman).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '';
+    $('acik_metin').textContent = 'Bu hesap şu an ' + cihazAdi(od.cihaz) + ' üzerinde açık' + (saat ? ' (son etkinlik ' + saat + ')' : '') +
+      '. Bir hesap aynı anda tek cihazda kullanılabilir. Burada açarsan oradaki program hemen kapanır.';
+  }
+  $('acik_ac').addEventListener('click', async () => {
+    OTURUM_ZORLA = true;
+    const { data } = await sb.auth.getSession();
+    if (data.session) lisansaBak(data.session);
   });
-  $('oturum_cikis').addEventListener('click', cikis);
+  $('acik_vazgec').addEventListener('click', async () => { await sb.auth.signOut({ scope: 'local' }); location.reload(); });
+
+  // Aktif cihaz: Realtime ile ANINDA, yedek olarak 30 sn'de bir nabızla izlenir
+  function oturumIzle(oturum){
+    const sid = oturumKimligi(oturum);
+    clearInterval(nabizSayac);
+    nabizSayac = setInterval(async () => {
+      try { const { data, error } = await sb.rpc('oturum_nabiz'); if (!error && data === false) oturumKapandi(); } catch (e) {}
+    }, 30000);
+    try {
+      if (kanal) sb.removeChannel(kanal);
+      kanal = sb.channel('oturum-' + oturum.user.id)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'lisanslar', filter: 'user_id=eq.' + oturum.user.id },
+          p => { if (p.new && sid && String(p.new.aktif_oturum || '') !== sid) oturumKapandi(); })
+        .subscribe();
+    } catch (e) {}
+  }
+
+  // Bu cihazın oturumu devralındı: program KAPATILIR, perde iner
+  function oturumKapandi(){
+    if (kapandi) return;
+    kapandi = true; acik = false;
+    clearInterval(nabizSayac); clearInterval(sayac);
+    const f = $('uygulama'); f.onload = null; f.src = 'about:blank'; f.hidden = true;
+    $('menu').hidden = true; $('ana_sayfa').hidden = true; $('giris_sahne').hidden = true;
+    $('oturum_perde').hidden = false;
+  }
+  $('oturum_yeniden').addEventListener('click', () => location.reload());
+  $('oturum_cikis').addEventListener('click', async () => { await sb.auth.signOut({ scope: 'local' }); location.reload(); });
 
   // Program yüklenince (aynı köken: blob, bu sayfa açtı):
   //  · ANTET: AHU Studio'nun Excel antetindeki ÇİZEN hücresi kabuğun AHU_CIZEN'ini okur

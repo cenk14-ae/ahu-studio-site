@@ -537,16 +537,29 @@
     perdeKaldir(function(){ if (window.Efekt) Efekt.giris('#ana_sayfa .pkart'); });
     document.title = 'ALTINAY · Ana sayfa';
     const kac = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    // Kartın TAMAMI tıklanır (Cenk: «aç tuşu istemiyorum, kutunun herhangi bir yerine tıklayınca açılsın»).
+    // Kart bir <a> — orta tık / Ctrl+tık yeni sekmede açar, klavyeyle Enter çalışır.
+    // Birden çok sürümü olan programda (AHU, yalnız yönetici) kart varsayılanı açar; öteki sürüm köşede küçük bağlantı.
     $('ana_programlar').innerHTML = izinli.map(p => {
       const surumler = d.yonetici ? Object.keys(p.dosyalar) : [Object.keys(p.dosyalar)[0]];
-      const dugmeler = surumler.length > 1
-        ? surumler.map((s, i) => '<a class="dugme kucuk' + (i ? ' ikincil' : '') + '" href="?ac=' + encodeURIComponent(p.id) + '&surum=' + s + '">' +
-            (s === 'tam' ? 'Tam sürüm' : s === 'sade' ? 'Sade sürüm' : kac(s)) + '</a>').join('')
-        : '<a class="dugme kucuk" href="?ac=' + encodeURIComponent(p.id) + '">Aç</a>';
-      return '<div class="pkart" style="--pr:' + kac(p.renk || '#4d8dff') + '">' + ikonHtml(p) + '<b>' + kac(p.ad) + '</b>' +
-        '<span class="ufak">' + kac(p.aciklama || '') + '</span><span class="pkart-dugmeler">' + dugmeler + '</span></div>';
+      const href = '?ac=' + encodeURIComponent(p.id) + (surumler.length > 1 ? '&surum=' + surumler[0] : '');
+      const diger = surumler.slice(1).map(s => '<span class="pkart-surum" role="link" tabindex="0" data-href="?ac=' + encodeURIComponent(p.id) + '&surum=' + s + '">' +
+        (s === 'sade' ? 'sade sürüm' : kac(s)) + ' →</span>').join('');
+      return '<a class="pkart pkart-tik" href="' + href + '" style="--pr:' + kac(p.renk || '#4d8dff') + '">' + diger + ikonHtml(p) + '<b>' + kac(p.ad) + '</b>' +
+        '<span class="ufak">' + kac(p.aciklama || '') + '</span></a>';
     }).join('');
   }
+  // Kartın köşesindeki öteki sürüm bağlantısı: kartın kendi tıklamasını durdurup kendi adresine gider
+  $('ana_programlar').addEventListener('click', e => {
+    const s = e.target.closest && e.target.closest('.pkart-surum');
+    if (!s) return;
+    e.preventDefault(); e.stopPropagation();
+    location.href = s.dataset.href;
+  });
+  $('ana_programlar').addEventListener('keydown', e => {
+    const s = e.target.closest && e.target.closest('.pkart-surum');
+    if (s && e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); location.href = s.dataset.href; }
+  });
   $('ana_cikis').addEventListener('click', cikis);
 
   // Program simgesi (ikonlar.js) — kartta renkli kutu içinde, sekmede favicon olarak

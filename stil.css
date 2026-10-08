@@ -241,3 +241,11 @@ tbody tr,tbody tr td{transition:background .14s}
 /* Robot koruması kutusu (Turnstile) — giriş formunda düğmenin üstünde */
 .captcha{margin-top:14px;min-height:0}
 .captcha:empty{display:none}
+
+/* Ana sayfa: kartın tamamı tıklanır (Aç düğmesi yok) */
+a.pkart-tik{cursor:pointer;color:inherit;text-decoration:none}
+a.pkart-tik:focus-visible{outline:2px solid var(--pr);outline-offset:3px}
+a.pkart-tik:active{transform:translateY(0) scale(.99)}
+.pkart-surum{position:absolute;top:14px;right:14px;z-index:2;font-size:11.5px;color:var(--t-3);padding:3px 9px;border-radius:99px;
+  border:1px solid var(--line-2);background:rgba(8,10,16,.4);transition:color .15s,border-color .15s}
+.pkart-surum:hover,.pkart-surum:focus-visible{color:var(--t-1);border-color:var(--pr);outline:none}

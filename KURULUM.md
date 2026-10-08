@@ -1,7 +1,7 @@
 # AHU Studio — site kurulumu
 
 ```
-Tarayıcı ──► alanadin.com (GitHub Pages)  : yalnız giriş + yönetim sayfası (herkese açık, program YOK)
+Tarayıcı ──► cenkaltinay.com (GitHub Pages)  : yalnız giriş + yönetim sayfası (herkese açık, program YOK)
                  │ giriş
                  ▼
              Supabase  ── Auth (e-posta + şifre)
@@ -20,8 +20,8 @@ geçerli lisansı olana verir (sade lisans → sade dosya, tam lisans → ikisi)
 1. supabase.com → GitHub ile giriş → **New project** (bölge: Frankfurt `eu-central-1`).
 2. **SQL Editor** → `supabase/kurulum.sql`'in tamamını yapıştır → **Run**.
 3. **Project Settings → API**: `Project URL` ve `anon public` anahtarını `config.js`'e yaz.
-4. **Authentication → URL Configuration**: *Site URL* = `https://alanadin.com`,
-   *Redirect URLs*'e `https://alanadin.com/**` ekle (doğrulama ve şifre sıfırlama e-postaları buraya döner).
+4. **Authentication → URL Configuration**: *Site URL* = `https://cenkaltinay.com`,
+   *Redirect URLs*'e `https://cenkaltinay.com/**` ekle (doğrulama ve şifre sıfırlama e-postaları buraya döner).
 5. **Authentication → Sign In / Providers → Email**: açık; *Confirm email* açık kalsın.
 
 ## 2. GitHub Pages

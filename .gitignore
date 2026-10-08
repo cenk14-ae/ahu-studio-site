@@ -2,3 +2,8 @@
 .env
 index-sade.html.bak
 uygulama/
+
+# Sunucu kodu GitHub'a (herkese açýk depo) ASLA girmez
+supabase/functions/
+supabase/.temp/
+

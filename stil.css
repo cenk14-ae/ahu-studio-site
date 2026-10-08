@@ -148,4 +148,11 @@ a.pkart:hover,.pkart:hover{border-color:var(--accent-line);background:var(--bg-2
 /* ===================== /ARKA PLAN ===================== */
 #kozmik-bg[hidden],.kozmik-perde[hidden]{display:none}
 #giris_sahne{position:relative;z-index:2}
-#giris_sahne .kart{background:rgba(16,19,26,.72);border-color:rgba(214,226,255,.16);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 24px 80px rgba(0,0,0,.45)}
+#giris_sahne .kart{background:rgba(12,15,24,.42);border-color:rgba(214,226,255,.14);-webkit-backdrop-filter:blur(8px) saturate(1.2);backdrop-filter:blur(8px) saturate(1.2);box-shadow:0 24px 80px rgba(0,0,0,.35)}
+#giris_sahne input{background:rgba(8,10,16,.55)}
+/* geniş ekranda kart sola: animasyonların çoğu ekranın ortasında döner */
+@media (min-width:900px){#giris_sahne{justify-content:flex-start;padding-left:clamp(32px,7vw,120px)}}
+/* marka: ALTINAY — arka plandaki renk halkası işareti */
+.marka{letter-spacing:.16em;font-weight:600}
+.marka .alt{letter-spacing:0}
+.marka .isaret{border-radius:50%;background:radial-gradient(circle at 50% 50%,var(--bg-0) 0 42%,transparent 43%),conic-gradient(from 210deg,#ff4f7a,#8a5cff,#2f6bff,#55d4ff,#2f6bff,#ff4f7a);box-shadow:0 0 14px rgba(70,120,255,.55)}

@@ -107,6 +107,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
+<script src="ikonlar.js"></script>
 <script>
 (function(){
   'use strict';
@@ -247,6 +248,7 @@
       $('giris_sahne').hidden = true;
       $('menu').hidden = false;
       document.title = program.ad;
+      sekmeSimgesi(program);
       f.title = program.ad;
       acik = true;
       donemselKontrol();
@@ -283,11 +285,34 @@
         ? surumler.map((s, i) => '<a class="dugme kucuk' + (i ? ' ikincil' : '') + '" href="?ac=' + encodeURIComponent(p.id) + '&surum=' + s + '">' +
             (s === 'tam' ? 'Tam sürüm' : s === 'sade' ? 'Sade sürüm' : kac(s)) + '</a>').join('')
         : '<a class="dugme kucuk" href="?ac=' + encodeURIComponent(p.id) + '">Aç</a>';
-      return '<div class="pkart"><span class="pkart-ikon"></span><b>' + kac(p.ad) + '</b>' +
+      return '<div class="pkart" style="--pr:' + kac(p.renk || '#4d8dff') + '">' + ikonHtml(p) + '<b>' + kac(p.ad) + '</b>' +
         '<span class="ufak">' + kac(p.aciklama || '') + '</span><span class="pkart-dugmeler">' + dugmeler + '</span></div>';
     }).join('');
   }
   $('ana_cikis').addEventListener('click', cikis);
+
+  // Program simgesi (ikonlar.js) — kartta renkli kutu içinde, sekmede favicon olarak
+  const IKON = window.AHU_IKON || {};
+  function ikonSvg(p){ return IKON[p.ikon || p.id] || IKON.varsayilan || ''; }
+  function ikonHtml(p){ return '<span class="pkart-ikon">' + ikonSvg(p) + '</span>'; }
+  function sekmeSimgesi(p){
+    const renk = p.renk || '#4d8dff';
+    const ic = ikonSvg(p).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')
+      .replace(/class="n"/g, 'fill="#fff" stroke="none"');   // dolu noktalar (karttaki circle.n kuralının karşılığı)
+    const kutu = ikonSvg(p).match(/viewBox="([^"]+)"/);
+    const vb = (kutu ? kutu[1] : '0 0 24 24').split(/\s+/).map(Number);
+    // Arka plan karesi + simge (beyaz, ölçek viewBox'a göre)
+    const s = 64, pay = 12, k = (s - 2 * pay) / Math.max(vb[2], vb[3]);
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + s + ' ' + s + '">' +
+      '<rect width="64" height="64" rx="16" fill="' + renk + '"/>' +
+      '<g transform="translate(' + pay + ' ' + pay + ') scale(' + k + ') translate(' + (-vb[0]) + ' ' + (-vb[1]) + ')" ' +
+      'color="#fff" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + ic + '</g></svg>';
+    let l = document.querySelector('link[rel="icon"]');
+    if (!l) { l = document.createElement('link'); l.rel = 'icon'; document.head.appendChild(l); }
+    l.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
+  }
+  const yonetimIkon = document.querySelector('.pkart-ikon.yonetim');
+  if (yonetimIkon && IKON.yonetim) yonetimIkon.innerHTML = IKON.yonetim;
 
   function trTarih(s){ const p = String(s).split('-'); return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : s; }
 

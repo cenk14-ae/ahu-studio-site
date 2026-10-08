@@ -15,6 +15,9 @@
   #menu a,#menu button{background:var(--bg-2);border:1px solid var(--line-2);color:var(--t-2);border-radius:99px;
     padding:5px 11px;font:inherit;font-size:12px;cursor:pointer;text-decoration:none}
   #menu a:hover,#menu button:hover{color:var(--t-1);background:var(--bg-3)}
+  #menu_bulut{align-self:center;font-size:12px;color:var(--t-2);background:var(--bg-2);border:1px solid var(--line-2);border-radius:99px;padding:5px 11px;white-space:nowrap}
+  #menu_bulut[data-durum=hata],#menu_bulut[data-durum=cevrimdisi]{color:var(--warn,#f0b445);border-color:currentColor}
+  #menu:has(#menu_bulut[data-durum=hata]),#menu:has(#menu_bulut[data-durum=cevrimdisi]){opacity:1}
   .yukleniyor{display:flex;align-items:center;gap:10px;color:var(--t-2);font-size:13px;margin-top:18px}
   .yukleniyor i{width:16px;height:16px;border:2px solid var(--line-3);border-top-color:var(--accent);border-radius:50%;animation:don .8s linear infinite}
   @keyframes don{to{transform:rotate(360deg)}}
@@ -111,6 +114,7 @@
 
 <iframe id="uygulama" title="AHU Studio" hidden></iframe>
 <div id="menu" hidden>
+  <span id="menu_bulut" hidden title="Bu programdaki verin hesabına bağlı olarak bulutta saklanır; başka kullanıcılar göremez."></span>
   <a href="./" id="menu_ana" hidden>Ana sayfa</a>
   <a href="yonetim.html" id="menu_yonetim" hidden>Yönetim</a>
   <button type="button" id="menu_cikis">Çıkış</button>
@@ -135,6 +139,8 @@
 <script src="ikonlar.js"></script>
 <script src="arka-plan.js"></script>
 <script src="efekt.js"></script>
+<script src="kullanici-verisi.js"></script>
+<script src="bekleme.js"></script>
 <script>
 (function(){
   'use strict';
@@ -316,13 +322,22 @@
     $('lisans_metin').textContent = d.bitis ? 'Lisans bitişi: ' + trTarih(d.bitis) : 'Süresiz lisans';
     $('yukleniyor').hidden = false;
     perdeAc();   // program iniyor: perde şimdi iner, program hazır olunca kalkar
+    // KULLANICI VERİSİ (kullanici-verisi.js): program açılmadan ÖNCE kullanıcının ad alanı hazırlanır
+    // (gerekirse buluttan geri kurulur); program HTML'ine ad alanı katmanı gömülür. AHU Studio kapsam dışı.
+    const veriVar = !!window.KullaniciVerisi && KullaniciVerisi.KAPSAM_DISI.indexOf(program.id) < 0;
     try {
+      const veriSozu = veriVar ? KullaniciVerisi.hazirla({ sb, uid: oturum.user.id, programId: program.id, yonetici: !!d.yonetici, gosterge: $('menu_bulut') }) : null;
+      if (veriSozu) veriSozu.catch(function(){});
       const { data: blob, error } = await sb.storage.from(A.KOVA).download(dosyaAdi);
       if (error) throw error;
       // '.gz' dosyalar (10 MB üstü programlar) sıkıştırılmış saklanır; burada çözülür
-      const metin = /\.gz$/.test(dosyaAdi)
+      let metin = /\.gz$/.test(dosyaAdi)
         ? await new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).text()
         : await blob.text();
+      if (veriSozu) {
+        try { await veriSozu; } catch (e) { throw new Error('Verilerin hazırlanamadı: ' + hataMetni(e)); }
+        metin = KullaniciVerisi.gom(metin);
+      }
       const url = URL.createObjectURL(new Blob([metin], { type: 'text/html;charset=utf-8' }));
       const f = $('uygulama');
       f.onload = function(){ programYuklendi(); programHazir(function(){ perdeKaldir(); }); };
@@ -338,7 +353,9 @@
     } catch (e) {
       $('yukleniyor').hidden = true;
       $('lisans_baslik').textContent = 'Program yüklenemedi';
-      mesaj('Program dosyası alınamadı: ' + hataMetni(e) + (d.yonetici ? ' — Yönetim sayfasından programı yüklediğinden emin ol.' : ''), 'hata');
+      const veriHatasi = /^Verilerin hazırlanamadı/.test((e && e.message) || '');
+      mesaj(veriHatasi ? hataMetni(e) + ' Program, buluttaki verinin üzerine yazmasın diye açılmadı — Tekrar dene.'
+        : 'Program dosyası alınamadı: ' + hataMetni(e) + (d.yonetici ? ' — Yönetim sayfasından programı yüklediğinden emin ol.' : ''), 'hata');
       $('yenile').hidden = false; perdeKaldir();
     }
   }

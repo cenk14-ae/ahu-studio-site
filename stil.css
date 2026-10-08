@@ -219,3 +219,21 @@ tbody tr,tbody tr td{transition:background .14s}
 #ana_sayfa .pkart{background:rgba(14,17,26,.74);border-color:rgba(214,226,255,.13);-webkit-backdrop-filter:blur(10px) saturate(1.2);backdrop-filter:blur(10px) saturate(1.2)}
 #ana_sayfa .pkart:hover{background:rgba(20,24,36,.72)}
 #ana_sayfa .ana-baslik{color:rgba(214,226,255,.75);text-shadow:0 1px 12px rgba(3,4,12,.8)}
+
+/* İŞLENİYOR GÖSTERGESİ (bekleme.js) — sunucu işi 1 sn'yi geçince ortada çıkar */
+#isleniyor{position:fixed;inset:0;z-index:260;display:grid;place-items:center;pointer-events:none;
+  background:rgba(6,8,14,.28);animation:islGir .18s ease-out both}
+#isleniyor[hidden]{display:none}
+#isleniyor .isl-kart{display:flex;align-items:center;gap:14px;min-width:280px;max-width:min(92vw,420px);
+  padding:16px 18px;border-radius:14px;background:rgba(16,19,26,.92);border:1px solid var(--line-2);
+  box-shadow:0 24px 70px rgba(0,0,0,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+#isleniyor b{display:block;font-size:14px;font-weight:600;color:var(--t-1)}
+#isleniyor span{display:block;font-size:12.5px;color:var(--t-3);margin-top:2px}
+#isleniyor em{margin-left:auto;font-style:normal;font-size:12px;color:var(--t-3);font-variant-numeric:tabular-nums}
+#isleniyor .isl-donen{width:26px;height:26px;flex:none;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0 25%,var(--accent) 60%,#55d4ff 100%);
+  -webkit-mask:radial-gradient(circle,transparent 55%,#000 57%);mask:radial-gradient(circle,transparent 55%,#000 57%);
+  animation:islDon .8s linear infinite}
+@keyframes islDon{to{transform:rotate(360deg)}}
+@keyframes islGir{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){#isleniyor .isl-donen{animation-duration:2.4s}}

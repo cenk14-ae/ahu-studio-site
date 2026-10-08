@@ -11,3 +11,6 @@ supabase/.temp/
 # Program kaynakları GitHub'a (herkese açık) ASLA girmez — Supabase özel kovasına yüklenir
 yeni programlar/
 
+
+# Arka plan kaynaÄŸÄ± (arka-plan.js + stil.css olarak alÄ±ndÄ±)
+giris-arka-plan.html

@@ -107,3 +107,45 @@ a.pkart:hover,.pkart:hover{border-color:var(--accent-line);background:var(--bg-2
 .pkart-dugmeler{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .pkart-dugmeler .dugme{text-decoration:none}
 @media (max-width:640px){ .kart{padding:22px 16px} }
+
+/* ===== GİRİŞ EKRANI ARKA PLANI (giris-arka-plan.html) — yalnız giriş ekranında görünür ===== */
+/* ===================== ARKA PLAN (kopyalanacak blok) ===================== */
+#kozmik-bg{
+  position:fixed; inset:0; width:100%; height:100%;
+  display:block; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(120% 70% at 50% 115%, rgba(30,52,150,.28) 0%, transparent 60%),
+    radial-gradient(55% 45% at 82% 18%, rgba(110,70,230,.12) 0%, transparent 70%),
+    #03040c;
+}
+/* WebGL yoksa: hafif statik yıldız deseni */
+#kozmik-bg.kozmik-yedek{
+  background:
+    radial-gradient(1.5px 1.5px at 12% 18%, #dbe9ff 50%, transparent 51%),
+    radial-gradient(1px 1px at 27% 62%, #b9d2ff 50%, transparent 51%),
+    radial-gradient(2px 2px at 38% 28%, #8fb4ff 50%, transparent 51%),
+    radial-gradient(1px 1px at 46% 84%, #dbe9ff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 58% 12%, #ffffff 50%, transparent 51%),
+    radial-gradient(1px 1px at 66% 47%, #b9d2ff 50%, transparent 51%),
+    radial-gradient(2.5px 2.5px at 74% 71%, #6d9bff 50%, transparent 51%),
+    radial-gradient(1px 1px at 83% 33%, #dbe9ff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 91% 88%, #ffffff 50%, transparent 51%),
+    radial-gradient(1px 1px at 6% 76%, #b9d2ff 50%, transparent 51%),
+    radial-gradient(1px 1px at 19% 41%, #ffffff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 53% 56%, #9cc0ff 50%, transparent 51%),
+    radial-gradient(60px 60px at 70% 70%, rgba(60,110,255,.35), transparent 70%),
+    radial-gradient(48% 48% at 50% 50%, rgba(70,110,255,.16), transparent 70%),
+    radial-gradient(120% 70% at 50% 115%, rgba(30,52,150,.28) 0%, transparent 60%),
+    #03040c;
+}
+/* Yazı okunurluğu için çok hafif karartma perdesi (istemezseniz silin) */
+.kozmik-perde{
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  background:
+    linear-gradient(to bottom, rgba(3,4,12,.55) 0%, rgba(3,4,12,0) 18%, rgba(3,4,12,0) 80%, rgba(3,4,12,.55) 100%),
+    radial-gradient(42% 30% at 50% 50%, rgba(3,4,12,.28) 0%, rgba(3,4,12,0) 100%);
+}
+/* ===================== /ARKA PLAN ===================== */
+#kozmik-bg[hidden],.kozmik-perde[hidden]{display:none}
+#giris_sahne{position:relative;z-index:2}
+#giris_sahne .kart{background:rgba(16,19,26,.72);border-color:rgba(214,226,255,.16);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 24px 80px rgba(0,0,0,.45)}

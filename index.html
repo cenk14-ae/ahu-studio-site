@@ -22,6 +22,10 @@
 </head>
 <body>
 
+<!-- Giriş ekranı arka planı (arka-plan.js) — program/ana sayfa açılınca durur ve gizlenir -->
+<canvas id="kozmik-bg" aria-hidden="true"></canvas>
+<div class="kozmik-perde" aria-hidden="true"></div>
+
 <div class="sahne" id="giris_sahne">
   <div class="kart">
     <div class="marka"><span class="isaret"></span>AHU Studio <span class="alt">· Cenk Altınay</span></div>
@@ -128,6 +132,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="ikonlar.js"></script>
+<script src="arka-plan.js"></script>
 <script>
 (function(){
   'use strict';
@@ -143,6 +148,12 @@
 
   function mesaj(m, tur){ const e = $('mesaj'); e.textContent = m || ''; e.className = 'mesaj' + (m ? ' goster ' + (tur||'bilgi') : ''); }
   function goster(bolum){ ['bolum_form','bolum_yeni','bolum_lisans','bolum_acik'].forEach(b => $(b).hidden = (b !== bolum)); }
+  // Arka plan yalnız giriş ekranında: program ya da ana sayfa açılınca GPU'yu boşa yormasın
+  function arkaPlan(acik){
+    const c = $('kozmik-bg'), p = document.querySelector('.kozmik-perde');
+    if (c) c.hidden = !acik; if (p) p.hidden = !acik;
+    try { if (window.KozmikArkaPlan) acik ? KozmikArkaPlan.oynat() : KozmikArkaPlan.duraklat(); } catch (e) {}
+  }
   function hataMetni(e){
     const m = (e && e.message) || String(e);
     if (/Invalid login credentials/i.test(m)) return 'E-posta ya da şifre hatalı.';
@@ -299,7 +310,7 @@
       f.onload = programYuklendi;
       f.src = url;
       f.hidden = false;
-      $('giris_sahne').hidden = true;
+      $('giris_sahne').hidden = true; arkaPlan(false);
       $('menu').hidden = false;
       document.title = program.ad;
       sekmeSimgesi(program);
@@ -379,7 +390,7 @@
     kapandi = true; acik = false;
     clearInterval(nabizSayac); clearInterval(sayac);
     const f = $('uygulama'); f.onload = null; f.src = 'about:blank'; f.hidden = true;
-    $('menu').hidden = true; $('ana_sayfa').hidden = true; $('giris_sahne').hidden = true;
+    $('menu').hidden = true; $('ana_sayfa').hidden = true; $('giris_sahne').hidden = true; arkaPlan(true);
     $('oturum_perde').hidden = false;
   }
   $('oturum_yeniden').addEventListener('click', () => location.reload());
@@ -426,7 +437,7 @@
       document.querySelectorAll('#ana_sayfa .kartlar')[1].hidden = true;
       document.querySelector('#ana_sayfa .marka .alt').textContent = '· Programlarım';
     }
-    $('giris_sahne').hidden = true;
+    $('giris_sahne').hidden = true; arkaPlan(false);
     $('ana_sayfa').hidden = false;
     $('ana_kim').textContent = oturum.user.email;
     document.title = 'Ana sayfa · Cenk Altınay';

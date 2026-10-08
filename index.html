@@ -75,8 +75,31 @@
   </div>
 </div>
 
+<!-- ANA SAYFA — yalnız yönetici görür: program seçimi + yönetim -->
+<div id="ana_sayfa" hidden>
+  <div class="ust">
+    <div class="marka"><span class="isaret"></span>Cenk Altınay <span class="alt">· Ana sayfa</span></div>
+    <span class="bosluk"></span>
+    <span class="kim" id="ana_kim"></span>
+    <button class="dugme ikincil kucuk" id="ana_cikis" type="button">Çıkış</button>
+  </div>
+  <main>
+    <h2 class="ana-baslik">Programlar</h2>
+    <div class="kartlar" id="ana_programlar"></div>
+    <h2 class="ana-baslik">Yönetim</h2>
+    <div class="kartlar">
+      <a class="pkart" href="yonetim.html">
+        <span class="pkart-ikon yonetim"></span>
+        <b>Yönetim ve ayarlar</b>
+        <span class="ufak">Kullanıcılar, lisanslar, roller ve program dosyaları</span>
+      </a>
+    </div>
+  </main>
+</div>
+
 <iframe id="uygulama" title="AHU Studio" hidden></iframe>
 <div id="menu" hidden>
+  <a href="./" id="menu_ana" hidden>Ana sayfa</a>
   <a href="yonetim.html" id="menu_yonetim" hidden>Yönetim</a>
   <button type="button" id="menu_cikis">Çıkış</button>
 </div>
@@ -200,12 +223,16 @@
       return;
     }
 
+    const prm = new URLSearchParams(location.search);
+    // YÖNETİCİ: ?ac= verilmemişse önce ANA SAYFA (program seçimi + yönetim)
+    if (d.yonetici && !prm.get('ac')) { anaSayfa(oturum, d); return; }
+
+    // Program: ?ac=<id> (yalnız yönetici seçer) — yoksa listenin ilki
+    const program = A.PROGRAMLAR.find(p => p.id === prm.get('ac')) || A.PROGRAMLAR[0];
     // tam lisans ?surum=sade ile sade sürümü de açabilir
-    const istek = new URLSearchParams(location.search).get('surum');
-    const surum = (d.surum === 'tam' && istek !== 'sade') ? 'tam' : 'sade';
-    // Yönetici ?deneme=ince ile sunucu çekirdekli sürümü dener (depo kuralı bu adları yalnız yöneticiye verir)
-    const deneme = d.yonetici && new URLSearchParams(location.search).get('deneme') === 'ince';
-    const dosyaAdi = deneme ? A.DOSYALAR[surum].replace('.html', '-ince.html') : A.DOSYALAR[surum];
+    const surum = (d.surum === 'tam' && prm.get('surum') !== 'sade') ? 'tam' : 'sade';
+    const dosyaAdi = program.dosyalar[surum] || program.dosyalar.tam || program.dosyalar.sade;
+    $('menu_ana').hidden = !d.yonetici;
     $('lisans_baslik').textContent = 'Hoş geldin';
     $('lisans_metin').textContent = d.bitis ? 'Lisans bitişi: ' + trTarih(d.bitis) : 'Süresiz lisans';
     $('yukleniyor').hidden = false;
@@ -219,7 +246,8 @@
       f.hidden = false;
       $('giris_sahne').hidden = true;
       $('menu').hidden = false;
-      document.title = 'AHU Studio';
+      document.title = program.ad;
+      f.title = program.ad;
       acik = true;
       donemselKontrol();
     } catch (e) {
@@ -241,6 +269,25 @@
       } catch (e) { /* bağlantı yoksa sessiz geç */ }
     }, (A.LISANS_KONTROL_DK || 30) * 60000);
   }
+
+  // Yöneticinin ana sayfası: her program bir kart; sürümü olan programda tam/sade seçimi
+  function anaSayfa(oturum, d){
+    $('giris_sahne').hidden = true;
+    $('ana_sayfa').hidden = false;
+    $('ana_kim').textContent = oturum.user.email;
+    document.title = 'Ana sayfa · Cenk Altınay';
+    const kac = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    $('ana_programlar').innerHTML = A.PROGRAMLAR.map(p => {
+      const surumler = Object.keys(p.dosyalar);
+      const dugmeler = surumler.length > 1
+        ? surumler.map((s, i) => '<a class="dugme kucuk' + (i ? ' ikincil' : '') + '" href="?ac=' + encodeURIComponent(p.id) + '&surum=' + s + '">' +
+            (s === 'tam' ? 'Tam sürüm' : s === 'sade' ? 'Sade sürüm' : kac(s)) + '</a>').join('')
+        : '<a class="dugme kucuk" href="?ac=' + encodeURIComponent(p.id) + '">Aç</a>';
+      return '<div class="pkart"><span class="pkart-ikon"></span><b>' + kac(p.ad) + '</b>' +
+        '<span class="ufak">' + kac(p.aciklama || '') + '</span><span class="pkart-dugmeler">' + dugmeler + '</span></div>';
+    }).join('');
+  }
+  $('ana_cikis').addEventListener('click', cikis);
 
   function trTarih(s){ const p = String(s).split('-'); return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : s; }
 

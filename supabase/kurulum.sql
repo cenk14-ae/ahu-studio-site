@@ -106,6 +106,16 @@ drop policy if exists yonetici_oku on public.yoneticiler;
 create policy yonetici_oku on public.yoneticiler for select using (public.yonetici_mi());
 -- yönetici ekleme/çıkarma yalnız SQL Editor'den (aşağıdaki 7. adım)
 
+-- 5b) YETKİLER — proje "yeni tabloları otomatik açma" kapalı kuruldu; izin AÇIKÇA verilir.
+--     Satır düzeyi süzgeç yine RLS'tedir; burası yalnız kapıyı açar. anon'a HİÇBİR şey yok.
+revoke all on public.lisanslar, public.yoneticiler from anon;
+grant select, update, delete on public.lisanslar  to authenticated;
+grant select                 on public.yoneticiler to authenticated;
+revoke execute on function public.lisans_durumu(), public.giris_kaydet(),
+                           public.yonetici_mi(), public.dosya_izni(text) from public, anon;
+grant  execute on function public.lisans_durumu(), public.giris_kaydet(),
+                           public.yonetici_mi(), public.dosya_izni(text) to authenticated;
+
 -- 6) DEPOLAMA — programın durduğu ÖZEL kova (herkese açık DEĞİL)
 insert into storage.buckets (id, name, public)
 values ('uygulama', 'uygulama', false)

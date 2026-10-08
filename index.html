@@ -191,6 +191,7 @@
     if (/already registered/i.test(m)) return 'Bu e-posta ile zaten bir hesap var. Giriş yap.';
     if (/Password should be/i.test(m)) return 'Şifre en az 8 karakter olmalı.';
     if (/rate limit/i.test(m)) return 'Çok sık denendi. Biraz bekleyip tekrar dene.';
+    if (/captcha/i.test(m)) return 'Güvenlik doğrulaması geçilemedi. Sayfayı yenileyip tekrar dene.';
     return m;
   }
 

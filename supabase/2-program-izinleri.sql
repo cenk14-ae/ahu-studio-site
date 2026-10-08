@@ -81,3 +81,8 @@ insert into public.programlar (id, ad, dosyalar) values
   ('maliyet',  'HVAC Proje Maliyet',    '{araclar/hvac-maliyet.html}'),
   ('kontrol',  'Kontrol Tezgâhı',       '{araclar/kontrol-tezgahi.html}')
 on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
+
+-- 7) 09.10.2026
+insert into public.programlar (id, ad, dosyalar) values
+  ('plc', 'Otomasyon Atölyesi', '{araclar/plc-atolyesi.html}')
+on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;

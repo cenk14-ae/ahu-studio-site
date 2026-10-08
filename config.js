@@ -36,7 +36,9 @@ window.AHU_AYAR = {
     { id: 'atolye', renk: '#c9a26b', ad: 'Atölye Hesap Araçları', aciklama: 'Sac/profil ağırlığı, firesiz profil boy kesimi, DXF metrajı ve diğer atölye hesapları.', dosyalar: { tek: 'araclar/atolye-hesap-araclari.html' } },
     { id: 'bukum', renk: '#91a7bd', ad: 'Sac Büküm Simülatörü', aciklama: 'Sac büküm simülasyonu ve büküm raporu.', dosyalar: { tek: 'araclar/sac-bukum-simulatoru.html' } },
     { id: 'maliyet', renk: '#ffd43b', ad: 'HVAC Proje Maliyet', aciklama: 'HVAC projelerinin maliyet hesabı.', dosyalar: { tek: 'araclar/hvac-maliyet.html' } },
-    { id: 'kontrol', renk: '#a9e34b', ad: 'Kontrol Tezgâhı', aciklama: 'Nem alma santrali kontrol tezgâhı: santral tasarımı, ESP32 yazılımı (.bin) ve kaynak kodu.', dosyalar: { tek: 'araclar/kontrol-tezgahi.html' } }
+    { id: 'kontrol', renk: '#a9e34b', ad: 'Kontrol Tezgâhı', aciklama: 'Nem alma santrali kontrol tezgâhı: santral tasarımı, ESP32 yazılımı (.bin) ve kaynak kodu.', dosyalar: { tek: 'araclar/kontrol-tezgahi.html' } },
+    // 09.10.2026
+    { id: 'plc', renk: '#ff6b6b', ad: 'Otomasyon Atölyesi', aciklama: 'PLC ve elektrik-elektronik devre simülasyonu: pano kurma, kumanda devreleri ve otomasyon denemeleri.', dosyalar: { tek: 'araclar/plc-atolyesi.html' } }
   ]
 };
 // Eski adla okuyan kod için (yönetim sayfasının dosya listesi)

@@ -93,6 +93,8 @@
     </section>
 
     <div class="mesaj" id="mesaj" role="status"></div>
+    <!-- İLETİŞİM (09.10.2026) — adres sayfa kaynağında düz yazılmaz (e-posta toplayan botlar), JS birleştirir -->
+    <p class="iletisim">İletişim: <a id="iletisim_posta" href="#">—</a></p>
   </div>
 
   <!-- TANITIM VİDEOLARI (09.10.2026) — tıklanınca büyür; video yalnız tıklanınca iner (preload yok) -->
@@ -628,6 +630,11 @@
 })();
 </script>
 <script>
+// İLETİŞİM — e-posta adresi parçalardan kurulur
+(function () {
+  var a = document.getElementById('iletisim_posta'), p = ['cenk.altinay', 'gmail.com'].join(String.fromCharCode(64));
+  a.textContent = p; a.href = 'mailto:' + p;
+})();
 // TANITIM VİDEOLARI — kart tıklanınca ortada büyük oynatıcı; Esc / perde / ✕ kapatır, video durur
 (function () {
   var m = document.getElementById('video_modal'), v = document.getElementById('vm_video');

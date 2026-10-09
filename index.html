@@ -94,6 +94,26 @@
 
     <div class="mesaj" id="mesaj" role="status"></div>
   </div>
+
+  <!-- TANITIM VİDEOLARI (09.10.2026) — tıklanınca büyür; video yalnız tıklanınca iner (preload yok) -->
+  <aside id="tanitim" aria-label="Tanıtım videoları">
+    <div class="tn-baslik">Tanıtım videoları</div>
+    <button type="button" class="tn-kart" data-video="tanitim/ahu-studio.mp4" data-ad="AHU Studio">
+      <img src="tanitim/ahu-studio.jpg" alt="" loading="lazy"><span class="tn-oynat" aria-hidden="true"></span>
+      <span class="tn-ad">AHU Studio<em>2 dk</em></span>
+    </button>
+    <button type="button" class="tn-kart" data-video="tanitim/sac-bukum.mp4" data-ad="Sac Büküm Simülatörü">
+      <img src="tanitim/sac-bukum.jpg" alt="" loading="lazy"><span class="tn-oynat" aria-hidden="true"></span>
+      <span class="tn-ad">Sac Büküm Simülatörü<em>2 dk</em></span>
+    </button>
+  </aside>
+</div>
+
+<div id="video_modal" hidden role="dialog" aria-modal="true" aria-label="Tanıtım videosu">
+  <div class="vm-kutu">
+    <div class="vm-ust"><b id="vm_ad"></b><button type="button" id="vm_kapat" aria-label="Kapat">✕</button></div>
+    <video id="vm_video" controls playsinline preload="none"></video>
+  </div>
 </div>
 
 <!-- ANA SAYFA — yalnız yönetici görür: program seçimi + yönetim -->
@@ -603,6 +623,23 @@
     const { data } = await sb.auth.getSession();
     if (data.session && !acik && $('bolum_yeni').hidden) lisansaBak(data.session);
   })();
+})();
+</script>
+<script>
+// TANITIM VİDEOLARI — kart tıklanınca ortada büyük oynatıcı; Esc / perde / ✕ kapatır, video durur
+(function () {
+  var m = document.getElementById('video_modal'), v = document.getElementById('vm_video');
+  function kapat() { v.pause(); v.removeAttribute('src'); v.load(); m.hidden = true; }
+  document.querySelectorAll('#tanitim .tn-kart').forEach(function (k) {
+    k.addEventListener('click', function () {
+      document.getElementById('vm_ad').textContent = k.dataset.ad;
+      v.poster = k.querySelector('img').src; v.src = k.dataset.video;
+      m.hidden = false; v.play().catch(function () {});
+    });
+  });
+  document.getElementById('vm_kapat').addEventListener('click', kapat);
+  m.addEventListener('click', function (e) { if (e.target === m) kapat(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !m.hidden) kapat(); });
 })();
 </script>
 </body>

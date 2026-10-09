@@ -170,7 +170,7 @@
 <script src="arka-plan.js"></script>
 <script src="efekt.js"></script>
 <script src="kullanici-verisi.js"></script>
-<script src="bekleme.js"></script>
+<script src="bekleme.js?v=20261009d"></script>
 <script src="kutuphane.js"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <script>
@@ -505,6 +505,7 @@
   let DEMO = false;
   const DEMO_MESAJ = 'Demo hesapta dosya indirme kapalı.';
   let demoSayac = null;
+  window.ahuDemoUyari = function(){ demoUyari(); };   // bekleme.js sunucunun 403 demo yanıtında çağırır
   function demoUyari(){
     let t = $('demo_uyari');
     if (!t) {

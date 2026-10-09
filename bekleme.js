@@ -53,6 +53,14 @@
     if (kutu) { kutu.hidden = true; document.getElementById('isl-alt').textContent = 'Sunucuda hesaplanıyor'; }
   }
 
+  // DEMO: sunucu dosya üreten isteği 403 {hata:'demo'} ile reddederse ekranın ortasındaki uyarı kartı açılır
+  function demoYanit(r) {
+    try {
+      if (!r || r.status !== 403 || typeof window.ahuDemoUyari !== 'function') return;
+      r.clone().json().then(function (j) { if (j && j.hata === 'demo') window.ahuDemoUyari(); }).catch(function () {});
+    } catch (e) {}
+  }
+
   function sar(win) {
     try {
       if (!win || win.__islIzlendi || typeof win.fetch !== 'function') return;
@@ -68,8 +76,17 @@
         var bitti = function () { bekleyen = Math.max(0, bekleyen - 1); if (!bekleyen) gizle(); };
         var p;
         try { p = asil.apply(this, arguments); } catch (e) { bitti(); throw e; }
-        return p.then(function (r) { bitti(); return r; }, function (e) { bitti(); throw e; });
+        return p.then(function (r) { bitti(); demoYanit(r); return r; }, function (e) { bitti(); throw e; });
       };
+      // Açık bağlantı (WebSocket) üzerinden gelen 403 demo yanıtı da kartı açar
+      if (typeof win.WebSocket === 'function' && !win.WebSocket.__demo) {
+        var WS = win.WebSocket;
+        var Yeni = function (u, p) { var ws = p === undefined ? new WS(u) : new WS(u, p);
+          try { ws.addEventListener('message', function (m) { if (typeof m.data === 'string' && m.data.indexOf('"demo"') >= 0 && typeof window.ahuDemoUyari === 'function') { try { var j = JSON.parse(m.data); if (JSON.stringify(j).indexOf('"hata":"demo"') >= 0) window.ahuDemoUyari(); } catch (e) {} } }); } catch (e) {}
+          return ws; };
+        Yeni.prototype = WS.prototype; ['CONNECTING','OPEN','CLOSING','CLOSED'].forEach(function (k) { Yeni[k] = WS[k]; });
+        Yeni.__demo = true; win.WebSocket = Yeni;
+      }
       win.__islIzlendi = true;
     } catch (e) { /* başka köken ya da erişilemez — geç */ }
   }

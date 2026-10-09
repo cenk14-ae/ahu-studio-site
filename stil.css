@@ -250,23 +250,18 @@ a.pkart-tik:active{transform:translateY(0) scale(.99)}
   border:1px solid var(--line-2);background:rgba(8,10,16,.4);transition:color .15s,border-color .15s}
 .pkart-surum:hover,.pkart-surum:focus-visible{color:var(--t-1);border-color:var(--pr);outline:none}
 
-/* ===== TANITIM VİDEOLARI (09.10.2026) — giriş ekranı; geniş ekranda sağ altta, dar ekranda kartın altında ===== */
-#giris_sahne{flex-wrap:wrap;gap:20px}
-#tanitim{width:100%;max-width:380px;display:grid;grid-template-columns:1fr 1fr;gap:10px;position:relative;z-index:2}
-#tanitim .tn-baslik{grid-column:1/-1;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--t-2)}
-.tn-kart{position:relative;display:block;padding:0;border:1px solid rgba(214,226,255,.16);border-radius:10px;overflow:hidden;cursor:pointer;
-  background:rgba(12,15,24,.5);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--t-1);font:inherit;text-align:left;
-  transition:transform .2s,border-color .2s,box-shadow .2s}
-.tn-kart:hover,.tn-kart:focus-visible{transform:translateY(-2px);border-color:rgba(120,160,255,.55);box-shadow:0 12px 40px rgba(0,0,0,.4)}
-.tn-kart img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;opacity:.9}
-.tn-oynat{position:absolute;left:50%;top:38%;width:38px;height:38px;margin:-19px 0 0 -19px;border-radius:50%;
-  background:rgba(77,141,255,.92);box-shadow:0 0 18px rgba(77,141,255,.6)}
-.tn-oynat::after{content:'';position:absolute;left:15px;top:11px;border-style:solid;border-width:8px 0 8px 12px;border-color:transparent transparent transparent #fff}
-.tn-ad{display:flex;justify-content:space-between;gap:6px;padding:7px 9px;font-size:12px;font-weight:500}
-.tn-ad em{font-style:normal;color:var(--t-2);font-weight:400}
-@media (min-width:900px){
-  #tanitim{position:fixed;right:clamp(20px,3vw,48px);bottom:clamp(20px,4vh,48px);width:min(460px,34vw);max-width:none}
-}
+/* ===== TANITIM VİDEOLARI (09.10.2026) — giriş ekranında SAĞ ÜSTTE küçük kapaklar; tıklayınca ortada büyür ===== */
+#tanitim{position:fixed;top:16px;right:16px;z-index:3;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+#tanitim .tn-baslik{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--t-2);opacity:.8}
+#tanitim .tn-satir{display:flex;gap:8px}
+.tn-kart{position:relative;display:block;width:168px;padding:0;border:1px solid rgba(214,226,255,.18);border-radius:8px;overflow:hidden;cursor:pointer;
+  background:#0b1020;font:inherit;box-shadow:0 8px 24px rgba(0,0,0,.35);transition:transform .18s,border-color .18s,box-shadow .18s}
+.tn-kart:hover,.tn-kart:focus-visible{transform:translateY(-2px);border-color:rgba(120,160,255,.65);box-shadow:0 12px 32px rgba(0,0,0,.5)}
+.tn-kart img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}
+.tn-oynat{position:absolute;right:7px;top:7px;width:22px;height:22px;border-radius:50%;background:rgba(77,141,255,.95);box-shadow:0 0 10px rgba(77,141,255,.6)}
+.tn-oynat::after{content:'';position:absolute;left:8px;top:6px;border-style:solid;border-width:5px 0 5px 8px;border-color:transparent transparent transparent #fff}
+.tn-ad{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (max-width:640px){ #tanitim{top:10px;right:10px} .tn-kart{width:112px} #tanitim .tn-baslik{display:none} }
 #video_modal{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;
   background:rgba(4,6,12,.78);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 #video_modal[hidden]{display:none}

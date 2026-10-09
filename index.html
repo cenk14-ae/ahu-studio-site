@@ -370,6 +370,7 @@
     const program = secilen || izinli[0];
     $('menu_ana').hidden = !(d.yonetici || izinli.length > 1);
     ANTET_AD = d.ad || '';
+    DEMO = !!d.demo && !d.yonetici;
     // tam lisans ?surum=sade ile sade sürümü de açabilir
     const surum = (d.surum === 'tam' && prm.get('surum') !== 'sade') ? 'tam' : 'sade';
     let dosyaAdi = program.dosyalar[surum] || program.dosyalar.tam || program.dosyalar.sade || Object.values(program.dosyalar)[0];
@@ -497,9 +498,50 @@
   //  · ANA SAYFA bağlantıları: programların kendi "Ana sayfa" düğmesi göreli adrese gider;
   //    blob belgede göreli adres çözülmez (düğme geçersiz kalıyordu) → burada yakalanır.
   let ANTET_AD = '';
+  // DEMO HESAP (09.10.2026, Cenk: «tuşlar dursun ama çalışmasın — indirmek ile ilgili olanlar»): programın
+  // bütün çerçevelerinde dosya indirme (a[download] tıklaması) durdurulur, yerine bildirim çıkar. Asıl kapı
+  // SUNUCUDADIR (çekirdek demo lisansa dosya üreten isteği 403 'demo' ile reddeder); bu katman yalnız
+  // tarayıcıda üretilen dosyaları (proje kaydı, Profil Listesi, Sac Yerleşim …) da kapsar.
+  let DEMO = false;
+  const DEMO_MESAJ = 'Demo hesapta dosya indirme kapalı.';
+  let demoSayac = null;
+  function demoUyari(){
+    let t = $('demo_uyari');
+    if (!t) {
+      t = document.createElement('div'); t.id = 'demo_uyari'; t.setAttribute('role', 'status');
+      t.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:99999;padding:12px 18px;border-radius:10px;background:#1d2633;color:#fff;font:600 14px/1.3 Inter,system-ui,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.35);border:1px solid #f0b445';
+      document.body.appendChild(t);
+    }
+    t.textContent = DEMO_MESAJ; t.hidden = false;
+    clearTimeout(demoSayac); demoSayac = setTimeout(() => { t.hidden = true; }, 3500);
+  }
+  function demoKur(w){
+    try {
+      if (!w || w.__demoKuruldu) return;
+      w.__demoKuruldu = true;
+      w.AHU_DEMO = true;
+      const P = w.HTMLAnchorElement && w.HTMLAnchorElement.prototype;
+      const indirme = a => a && (a.hasAttribute('download') || /^(blob|data):/i.test(a.getAttribute('href') || ''));
+      if (P) {
+        const tikla = P.click, gonder = P.dispatchEvent;
+        P.click = function(){ if (indirme(this)) { demoUyari(); return; } return tikla.apply(this, arguments); };
+        P.dispatchEvent = function(e){ if (e && e.type === 'click' && indirme(this)) { demoUyari(); return false; } return gonder.apply(this, arguments); };
+      }
+      w.document.addEventListener('click', e => {
+        const a = e.target && e.target.closest ? e.target.closest('a') : null;
+        if (indirme(a)) { e.preventDefault(); e.stopPropagation(); demoUyari(); }
+      }, true);
+      w.document.querySelectorAll('iframe').forEach(fr => {
+        const kur = () => { try { demoKur(fr.contentWindow); } catch (e) {} };
+        kur();
+        fr.addEventListener('load', kur);
+      });
+    } catch (e) {}
+  }
   function programYuklendi(){
     const f = $('uygulama');
     try { f.contentWindow.AHU_CIZEN = ANTET_AD; } catch (e) {}
+    if (DEMO) demoKur(f.contentWindow);
     try {
       f.contentDocument.addEventListener('click', function(e){
         const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;

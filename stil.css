@@ -279,3 +279,19 @@ a.pkart-tik:active{transform:translateY(0) scale(.99)}
 /* Yönetim: kullanıcı silme düğmesi */
 .dugme.sil{color:var(--danger,#ef6461);border-color:rgba(239,100,97,.45)}
 .dugme.sil:hover{background:rgba(239,100,97,.12)}
+/* Yönetim — kullanıcı tablosu YATAY KAYDIRMASIZ (09.10.2026): her kullanıcı sarılan bir satır-kart,
+   sütun başlıkları hücrelerin üstünde küçük etiket olarak durur */
+#panel_lisans .tablo-kap{overflow:visible}
+#panel_lisans table,#panel_lisans tbody{display:block;width:100%}
+#panel_lisans thead{display:none}
+#panel_lisans tr[data-id]:not(.prog-satir){display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px 22px;padding:14px 6px 8px;border-top:1px solid var(--line)}
+#panel_lisans tr.prog-satir{display:block;padding:0 6px 14px}
+#panel_lisans tr.prog-satir td{display:block;border:0;padding:0;line-height:2}
+#panel_lisans tr[data-id] td{display:block;border:0;padding:0;min-width:0}
+#panel_lisans td[data-e]::before{content:attr(data-e);display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--t-3);margin-bottom:4px}
+#panel_lisans td.k-kim{flex:1 1 230px}
+#panel_lisans td.k-kim input,#panel_lisans td.k-kim select{width:100%;min-width:0!important;max-width:300px}
+#panel_lisans td[data-e="Not"]{flex:1 1 160px}
+#panel_lisans td[data-e="Not"] input{width:100%;min-width:0!important}
+#panel_lisans td.k-is{margin-left:auto;align-self:flex-end}
+#panel_lisans td[data-e="Son giriş"]{max-width:230px}

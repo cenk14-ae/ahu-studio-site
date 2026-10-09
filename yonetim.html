@@ -154,22 +154,22 @@
     $('satirlar').innerHTML = gor.map(l => {
       const [c, t] = durum(l);
       return '<tr data-id="' + l.user_id + '">' +
-        '<td><div class="eposta">' + kac(l.eposta) + '</div><input data-alan="ad" value="' + kac(l.ad) + '" placeholder="Ad Soyad (antete yazılır)" title="Excel antetinin ÇİZEN hücresine yazılır" style="margin:4px 0 2px;min-width:180px"><br>' +
+        '<td data-e="Kullanıcı" class="k-kim"><div class="eposta">' + kac(l.eposta) + '</div><input data-alan="ad" value="' + kac(l.ad) + '" placeholder="Ad Soyad (antete yazılır)" title="Excel antetinin ÇİZEN hücresine yazılır" style="margin:4px 0 2px;min-width:180px"><br>' +
           '<select data-alan="firma_id" title="Ortak santral kütüphanesi bu firmaya göre" style="margin:2px 0;padding:5px 7px;font-size:12.5px;min-width:180px">' + firmaSecenek(l.firma_id) + '</select>' +
           (l.firma ? '<div class="ufak" title="Kayıt olurken yazdığı firma">Kayıtta: ' + kac(l.firma) + '</div>' : '') + '</td>' +
-        '<td><span class="rozet ' + c + '">' + t + '</span></td>' +
-        '<td><input type="checkbox" data-alan="aktif"' + (l.aktif ? ' checked' : '') + ' style="width:auto"></td>' +
+        '<td data-e="Durum"><span class="rozet ' + c + '">' + t + '</span></td>' +
+        '<td data-e="Aktif"><input type="checkbox" data-alan="aktif"' + (l.aktif ? ' checked' : '') + ' style="width:auto"></td>' +
         (yoneticiler.has(l.user_id)
-          ? '<td><span class="rozet yonetici">Yönetici</span><input type="hidden" data-alan="surum" value="tam"></td>'
-          : '<td><select data-alan="surum"><option value="sade"' + (l.surum === 'sade' ? ' selected' : '') + '>Normal — sade sürüm</option><option value="tam"' + (l.surum === 'tam' ? ' selected' : '') + '>Pro — tam sürüm</option></select></td>') +
-        '<td style="white-space:nowrap"><input type="date" data-alan="bitis" value="' + (l.bitis || '') + '" style="width:150px"> <button class="dugme ikincil kucuk" data-is="yil" type="button" title="Bitişe 1 yıl ekle">+1 yıl</button></td>' +
-        '<td><input data-alan="notlar" value="' + kac(l.notlar) + '" placeholder="—" style="min-width:140px"></td>' +
-        '<td class="ufak" style="white-space:nowrap">' + tarihSaat(l.son_giris) +
+          ? '<td data-e="Rol"><span class="rozet yonetici">Yönetici</span><input type="hidden" data-alan="surum" value="tam"></td>'
+          : '<td data-e="Rol"><select data-alan="surum"><option value="sade"' + (l.surum === 'sade' ? ' selected' : '') + '>Normal — sade sürüm</option><option value="tam"' + (l.surum === 'tam' ? ' selected' : '') + '>Pro — tam sürüm</option></select></td>') +
+        '<td data-e="Bitiş" style="white-space:nowrap"><input type="date" data-alan="bitis" value="' + (l.bitis || '') + '" style="width:150px"> <button class="dugme ikincil kucuk" data-is="yil" type="button" title="Bitişe 1 yıl ekle">+1 yıl</button></td>' +
+        '<td data-e="Not"><input data-alan="notlar" value="' + kac(l.notlar) + '" placeholder="—" style="min-width:140px"></td>' +
+        '<td data-e="Son giriş" class="ufak">' + tarihSaat(l.son_giris) +
           (l.aktif_oturum && !yoneticiler.has(l.user_id)
             ? '<br><span title="' + kac(l.oturum_cihaz || '') + '">Açık: ' + kac(cihazAdi(l.oturum_cihaz)) + ' · ' + tarihSaat(l.oturum_zamani) + '</span>' +
               ' <button class="baglanti" data-is="oturum" type="button" title="Bu oturumu kapat (kullanıcı yeniden giriş yapmak zorunda kalır)">düşür</button>'
             : '') + '</td>' +
-        '<td style="white-space:nowrap"><button class="dugme kucuk" data-is="kaydet" type="button">Kaydet</button>' +
+        '<td class="k-is" style="white-space:nowrap"><button class="dugme kucuk" data-is="kaydet" type="button">Kaydet</button>' +
           (yoneticiler.has(l.user_id) ? '' : ' <button class="dugme ikincil kucuk sil" data-is="sil" type="button" title="Hesabı ve lisansını kalıcı olarak sil">Sil</button>') + '</td>' +
         '</tr>' + programSatiri(l);
     }).join('') || '<tr><td colspan="8" class="ufak">Kayıt yok.</td></tr>';

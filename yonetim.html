@@ -169,7 +169,8 @@
             ? '<br><span title="' + kac(l.oturum_cihaz || '') + '">Açık: ' + kac(cihazAdi(l.oturum_cihaz)) + ' · ' + tarihSaat(l.oturum_zamani) + '</span>' +
               ' <button class="baglanti" data-is="oturum" type="button" title="Bu oturumu kapat (kullanıcı yeniden giriş yapmak zorunda kalır)">düşür</button>'
             : '') + '</td>' +
-        '<td><button class="dugme kucuk" data-is="kaydet" type="button">Kaydet</button></td>' +
+        '<td style="white-space:nowrap"><button class="dugme kucuk" data-is="kaydet" type="button">Kaydet</button>' +
+          (yoneticiler.has(l.user_id) ? '' : ' <button class="dugme ikincil kucuk sil" data-is="sil" type="button" title="Hesabı ve lisansını kalıcı olarak sil">Sil</button>') + '</td>' +
         '</tr>' + programSatiri(l);
     }).join('') || '<tr><td colspan="8" class="ufak">Kayıt yok.</td></tr>';
   }
@@ -181,6 +182,17 @@
     const tr = b.closest('tr'), id = tr.dataset.id;
     const ptr = $('satirlar').querySelector('tr.prog-satir[data-id="' + id + '"]');
     if (b.dataset.is === 'yil') { const i = tr.querySelector('[data-alan=bitis]'); i.value = yilEkle(i.value); return; }
+    if (b.dataset.is === 'sil') {
+      const k = liste.find(l => l.user_id === id);
+      if (!confirm(k.eposta + '\n\nBu hesap ve lisansı KALICI olarak silinsin mi? Kişisel kütüphanesi de silinir. Geri alınamaz.')) return;
+      b.disabled = true;
+      const { error: sh } = await sb.rpc('kullanici_sil', { hedef: id });
+      b.disabled = false;
+      if (sh) return mesaj('Silinemedi: ' + sh.message, 'hata');
+      liste = liste.filter(l => l.user_id !== id);
+      mesaj('Silindi: ' + k.eposta, 'tamam');
+      return ciz();
+    }
     if (b.dataset.is === 'oturum') {
       const { error: oh } = await sb.from('lisanslar').update({ aktif_oturum: null }).eq('user_id', id);
       if (oh) return mesaj(oh.message, 'hata');

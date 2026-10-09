@@ -50,6 +50,22 @@
     </div>
   </section>
 
+  <!-- FİRMALAR (09.10.2026): aynı firmaya atanan kullanıcılar AHU Studio'da ORTAK santral kütüphanesini kullanır -->
+  <section class="panel" id="panel_firma" hidden>
+    <h2>Firmalar <span class="say" id="firma_say"></span></h2>
+    <p class="ufak" style="color:var(--t-3);font-size:12.5px;margin:-4px 0 12px">Aynı firmaya atanan kullanıcılar AHU Studio'da ortak bir santral kütüphanesi kullanır. Kullanıcıyı firmaya yukarıdaki tablodan atarsın (Kaydet ile yazılır).</p>
+    <div class="arac">
+      <input id="firma_yeni" maxlength="120" placeholder="Yeni firma adı">
+      <button class="dugme kucuk" id="firma_ekle" type="button">Firma ekle</button>
+    </div>
+    <div class="tablo-kap">
+      <table>
+        <thead><tr><th>Firma</th><th>Üyeler</th><th></th></tr></thead>
+        <tbody id="firma_satirlar"></tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="panel" id="panel_dosya" hidden>
     <h2>Program dosyaları</h2>
     <div class="dosyalar" id="dosyalar"></div>
@@ -70,7 +86,7 @@
   let perdeKalkti = false;
   function perdeKaldir(cb){ if (perdeKalkti) return; perdeKalkti = true; PERDE.bitir(cb); }
   setTimeout(function(){ perdeKaldir(); }, 12000);
-  let liste = [], yoneticiler = new Set();
+  let liste = [], yoneticiler = new Set(), firmalar = [];
 
   function mesaj(m, tur){ const e = $('mesaj'); e.textContent = m || ''; e.className = 'mesaj' + (m ? ' goster ' + (tur||'bilgi') : ''); }
   function kac(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -91,7 +107,7 @@
     $('kim').textContent = data.session.user.email;
     const { data: d, error } = await sb.rpc('lisans_durumu');
     if (error || !d || !d.yonetici) { perdeKaldir(); mesaj('Bu sayfa yalnız yöneticiler içindir.', 'hata'); return; }
-    $('panel_lisans').hidden = false; $('panel_dosya').hidden = false;
+    $('panel_lisans').hidden = false; $('panel_dosya').hidden = false; $('panel_firma').hidden = false;
     yukle(); dosyalariCiz();
   })();
 
@@ -101,7 +117,10 @@
     if (error) return mesaj(error.message, 'hata');
     const { data: y } = await sb.from('yoneticiler').select('user_id');
     yoneticiler = new Set((y || []).map(r => r.user_id));
-    liste = data; ciz();
+    const { data: f, error: fh } = await sb.from('firmalar').select('id,ad,olusturma').order('ad');
+    if (fh) mesaj('Firmalar okunamadı: ' + fh.message, 'hata');
+    firmalar = (f || []).slice().sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+    liste = data; ciz(); firmaCiz();
     perdeKaldir(function(){ if (window.Efekt) Efekt.giris('.panel:not([hidden])'); });
   }
   $('tazele').addEventListener('click', yukle);
@@ -129,13 +148,15 @@
   function ciz(){
     const q = $('ara').value.trim().toLocaleLowerCase('tr'), s = $('suz').value;
     const gor = liste.filter(l => (!s || durum(l)[0] === s) &&
-      (!q || [l.eposta, l.ad, l.firma].join(' ').toLocaleLowerCase('tr').includes(q)));
+      (!q || [l.eposta, l.ad, l.firma, (firmalar.find(f => f.id === l.firma_id) || {}).ad].join(' ').toLocaleLowerCase('tr').includes(q)));
     const bekleyen = liste.filter(l => !l.aktif).length;
     $('say').textContent = liste.length + ' kullanıcı' + (bekleyen ? ' · ' + bekleyen + ' onay bekliyor' : '');
     $('satirlar').innerHTML = gor.map(l => {
       const [c, t] = durum(l);
       return '<tr data-id="' + l.user_id + '">' +
-        '<td><div class="eposta">' + kac(l.eposta) + '</div><input data-alan="ad" value="' + kac(l.ad) + '" placeholder="Ad Soyad (antete yazılır)" title="Excel antetinin ÇİZEN hücresine yazılır" style="margin:4px 0 2px;min-width:180px"><div class="ufak">' + kac(l.firma || '') + '</div></td>' +
+        '<td><div class="eposta">' + kac(l.eposta) + '</div><input data-alan="ad" value="' + kac(l.ad) + '" placeholder="Ad Soyad (antete yazılır)" title="Excel antetinin ÇİZEN hücresine yazılır" style="margin:4px 0 2px;min-width:180px"><br>' +
+          '<select data-alan="firma_id" title="Ortak santral kütüphanesi bu firmaya göre" style="margin:2px 0;padding:5px 7px;font-size:12.5px;min-width:180px">' + firmaSecenek(l.firma_id) + '</select>' +
+          (l.firma ? '<div class="ufak" title="Kayıt olurken yazdığı firma">Kayıtta: ' + kac(l.firma) + '</div>' : '') + '</td>' +
         '<td><span class="rozet ' + c + '">' + t + '</span></td>' +
         '<td><input type="checkbox" data-alan="aktif"' + (l.aktif ? ' checked' : '') + ' style="width:auto"></td>' +
         (yoneticiler.has(l.user_id)
@@ -172,7 +193,8 @@
       surum:  tr.querySelector('[data-alan=surum]').value,
       bitis:  tr.querySelector('[data-alan=bitis]').value || null,
       notlar: tr.querySelector('[data-alan=notlar]').value.trim() || null,
-      ad:     tr.querySelector('[data-alan=ad]').value.trim() || null
+      ad:     tr.querySelector('[data-alan=ad]').value.trim() || null,
+      firma_id: tr.querySelector('[data-alan=firma_id]').value || null
     };
     if (ptr && ptr.querySelector('button[data-prog]'))
       deg.programlar = Array.from(ptr.querySelectorAll('button[data-prog].acik')).map(x => x.dataset.prog);
@@ -182,7 +204,54 @@
     if (error) return mesaj(error.message, 'hata');
     Object.assign(liste.find(l => l.user_id === id), deg);
     mesaj('Kaydedildi: ' + liste.find(l => l.user_id === id).eposta, 'tamam');
-    ciz();
+    ciz(); firmaCiz();
+  });
+
+  // --- firmalar (ortak santral kütüphanesi)
+  function firmaSecenek(secili){
+    return '<option value="">— Firma yok —</option>' + firmalar.map(f => '<option value="' + f.id + '"' + (f.id === secili ? ' selected' : '') + '>' + kac(f.ad) + '</option>').join('');
+  }
+  function firmaCiz(){
+    $('firma_say').textContent = firmalar.length + ' firma';
+    $('firma_satirlar').innerHTML = firmalar.map(f => {
+      const uye = liste.filter(l => l.firma_id === f.id);
+      return '<tr data-firma="' + f.id + '"><td><input data-alan="firma_ad" value="' + kac(f.ad) + '" maxlength="120" style="min-width:200px"></td>' +
+        '<td class="ufak">' + (uye.length ? uye.map(l => kac(l.ad || l.eposta)).join(', ') : '—') + '</td>' +
+        '<td style="white-space:nowrap"><button class="dugme kucuk" data-firma-is="kaydet" type="button">Kaydet</button> ' +
+        '<button class="dugme ikincil kucuk" data-firma-is="sil" type="button">Sil</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="ufak">Henüz firma yok.</td></tr>';
+  }
+  $('firma_ekle').addEventListener('click', async () => {
+    const ad = $('firma_yeni').value.trim();
+    if (!ad) { $('firma_yeni').focus(); return; }
+    const { data, error } = await sb.from('firmalar').insert({ ad }).select('id,ad,olusturma').single();
+    if (error) return mesaj(/duplicate|tekil/i.test(error.message) ? 'Bu adla bir firma zaten var.' : error.message, 'hata');
+    firmalar.push(data); firmalar.sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+    $('firma_yeni').value = '';
+    mesaj('Firma eklendi: ' + data.ad + ' — kullanıcıları yukarıdaki tablodan ata.', 'tamam');
+    ciz(); firmaCiz();
+  });
+  $('firma_yeni').addEventListener('keydown', e => { if (e.key === 'Enter') $('firma_ekle').click(); });
+  $('firma_satirlar').addEventListener('click', async e => {
+    const b = e.target.closest('button[data-firma-is]'); if (!b) return;
+    const tr = b.closest('tr'), id = tr.dataset.firma, f = firmalar.find(x => x.id === id);
+    if (!f) return;
+    if (b.dataset.firmaIs === 'kaydet') {
+      const ad = tr.querySelector('[data-alan=firma_ad]').value.trim();
+      if (!ad) return mesaj('Firma adı boş olamaz.', 'hata');
+      const { error } = await sb.from('firmalar').update({ ad }).eq('id', id);
+      if (error) return mesaj(/duplicate|tekil/i.test(error.message) ? 'Bu adla bir firma zaten var.' : error.message, 'hata');
+      f.ad = ad; firmalar.sort((a, c) => a.ad.localeCompare(c.ad, 'tr'));
+      mesaj('Firma adı kaydedildi: ' + ad, 'tamam'); ciz(); firmaCiz();
+    } else {
+      const uye = liste.filter(l => l.firma_id === id).length;
+      if (!confirm('«' + f.ad + '» silinsin mi?\n\n' + (uye ? uye + ' kullanıcı firmasız kalır. ' : '') + 'Firmanın ORTAK SANTRAL KÜTÜPHANESİ (bütün klasör ve santraller) KALICI olarak silinir.')) return;
+      const { error } = await sb.from('firmalar').delete().eq('id', id);
+      if (error) return mesaj(error.message, 'hata');
+      firmalar = firmalar.filter(x => x.id !== id);
+      liste.forEach(l => { if (l.firma_id === id) l.firma_id = null; });
+      mesaj('Firma silindi: ' + f.ad, 'tamam'); ciz(); firmaCiz();
+    }
   });
 
   // --- program dosyaları (özel kova)

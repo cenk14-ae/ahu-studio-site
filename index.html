@@ -147,6 +147,7 @@
 <script src="efekt.js"></script>
 <script src="kullanici-verisi.js"></script>
 <script src="bekleme.js"></script>
+<script src="kutuphane.js"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <script>
 (function(){
@@ -372,6 +373,8 @@
       }
       const url = URL.createObjectURL(new Blob([metin], { type: 'text/html;charset=utf-8' }));
       const f = $('uygulama');
+      // SANTRAL KÜTÜPHANESİ (kutuphane.js): AHU Studio'nun f0'ı açılırken el sıkışır; kurulum programdan ÖNCE
+      if (program.id === 'ahu' && window.Kutuphane) Kutuphane.kur({ sb, uid: oturum.user.id, yonetici: !!d.yonetici, cerceve: f });
       f.onload = function(){ programYuklendi(); programHazir(function(){ perdeKaldir(); }); };
       f.src = url;
       f.hidden = false;
@@ -457,6 +460,7 @@
     kapandi = true; acik = false;
     clearInterval(nabizSayac); clearInterval(sayac);
     const f = $('uygulama'); f.onload = null; f.src = 'about:blank'; f.hidden = true;
+    if (window.Kutuphane) Kutuphane.kapat();
     $('menu').hidden = true; $('ana_sayfa').hidden = true; $('giris_sahne').hidden = true; arkaPlan(true);
     $('oturum_perde').hidden = false;
   }

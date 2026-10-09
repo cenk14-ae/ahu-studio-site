@@ -93,3 +93,18 @@ ve **buluta** yazılır; kullanıcılar birbirininkini göremez. **Programların
   localStorage'dan okur). Şartname'nin OCR dil önbelleği (`keyval-store`, Worker içinde) buluta yazılmaz.
   Lazer ERP'nin yedek klasörü tanıtıcısı (FileSystemHandle) serileştirilemez — her cihazda yeniden seçilir.
 - Doğrulama: `dogrulama/kullanici-verisi-tarayici.js` (gerçek Chrome + sahte Supabase, 47 kontrol).
+
+## Santral kütüphanesi (09.10.2026)
+
+AHU Studio kullanıcıları santralleri klasörlü bir kütüphanede saklar: **Kişisel** (yalnız sahibi) ve
+**Firma** (aynı firmaya atanmış geçerli lisanslılar, hepsi ekler/düzenler/taşır/siler). Yönetici hepsini görür.
+Normal proje çalışması sunucuya yazılmaz — yalnız kullanıcının açıkça «Buraya kaydet» dediği santral.
+
+- **SQL** `supabase/7-kutuphane.sql` (1–6'dan sonra): `firmalar`, `lisanslar.firma_id`, `kutuphane_klasor`,
+  `kutuphane_kayit` (santral jsonb, en fazla 2 MB), RLS kapısı `kutuphane_erisim` (lisans + AHU izni + tek oturum;
+  yönetici muaf), tetikleyici (kimlik damgası, kapsam tutarlılığı, klasör döngüsü), çöp kutusu
+  `kutuphane_sil` / `kutuphane_geri_al` (30 gün; kalıcı silme yalnız yönetici), `kutuphane_temizle`, `kutuphane_baglam`.
+- **Arayüz** `kutuphane.js` (yükleyici): AHU Studio'nun 3B Tasarım araç çubuğundaki **Kütüphane** düğmesi
+  açar (düğme yalnız site içinde görünür). Köprü f0 ↔ `window.top`, aynı köken + program çerçevesi şartı.
+- **Yönetim → Firmalar**: firma ekle / adlandır / sil (firma silinince ortak kütüphanesi de silinir);
+  kullanıcıyı firmaya kullanıcı tablosundaki seçimle ata.

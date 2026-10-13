@@ -292,7 +292,10 @@
     if (!f) return mesaj('Önce bir dosya seç.', 'hata');
     if (f.name !== ad && !confirm('Seçilen dosyanın adı "' + f.name + '". "' + ad + '" olarak yüklensin mi?')) return;
     b.disabled = true; b.textContent = 'Yükleniyor…';
-    const { error } = await sb.storage.from(A.KOVA).upload(ad, f, { upsert: true, contentType: 'text/html; charset=utf-8', cacheControl: '0' });
+    // kovada sıkıştırılmış saklanır (kota); yükleyici (index.html) ilk baytlardan tanıyıp çözer
+    let govde = f;
+    try { govde = await new Response(f.stream().pipeThrough(new CompressionStream('gzip'))).blob(); } catch (h) { govde = f; }
+    const { error } = await sb.storage.from(A.KOVA).upload(ad, govde, { upsert: true, contentType: 'text/html; charset=utf-8', cacheControl: '0' });
     b.disabled = false; b.textContent = 'Yükle / güncelle';
     if (error) return mesaj('Yüklenemedi: ' + error.message, 'hata');
     mesaj(ad + ' yüklendi. Kullanıcılar bir sonraki açılışta yeni sürümü alır.', 'tamam');

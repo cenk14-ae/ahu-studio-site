@@ -394,8 +394,10 @@
       if (veriSozu) veriSozu.catch(function(){});
       const { data: blob, error } = await sb.storage.from(A.KOVA).download(dosyaAdi);
       if (error) throw error;
-      // '.gz' dosyalar (10 MB üstü programlar) sıkıştırılmış saklanır; burada çözülür
-      let metin = /\.gz$/.test(dosyaAdi)
+      // Programlar kovada SIKIŞTIRILMIŞ (gzip) saklanır (13.10.2026, kota: indirme ~4–5 kat küçük); adı aynı kalır,
+      // ilk iki bayt 1f 8b ise burada çözülür. Sıkıştırılmamış eski dosya da açılır.
+      const bas = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
+      let metin = (bas[0] === 0x1f && bas[1] === 0x8b)
         ? await new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).text()
         : await blob.text();
       if (veriSozu) {

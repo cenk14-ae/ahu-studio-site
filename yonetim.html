@@ -14,6 +14,32 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="stil.css?v=20261009b">
+<style>
+  /* ETKİNLİK GEÇMİŞİ (13.10.2026): e-postaya tıklayınca açılan pencere */
+  button.eposta{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:left;text-decoration:underline dotted var(--t-3);text-underline-offset:3px}
+  button.eposta:hover{color:var(--accent-2)}
+  #gecmis{margin:auto;width:min(860px,calc(100vw - 32px));max-height:calc(100vh - 48px);padding:0;border:1px solid var(--line-2);border-radius:12px;background:var(--bg-1);color:var(--t-1);box-shadow:0 24px 70px rgba(0,0,0,.55)}
+  #gecmis::backdrop{background:rgba(4,6,12,.6)}
+  #gecmis .g-bas{position:sticky;top:0;z-index:2;display:flex;align-items:flex-start;gap:12px;padding:16px 18px 12px;background:var(--bg-1);border-bottom:1px solid var(--line)}
+  #gecmis .g-bas h3{font-size:15px;font-weight:600;margin:0 0 4px}
+  #gecmis .g-ozet{font-size:12.5px;color:var(--t-2);line-height:1.6}
+  #gecmis .g-ozet b{color:var(--t-1);font-weight:600}
+  #gecmis .g-govde{padding:6px 18px 18px}
+  #gecmis .g-gun{font-size:12px;font-weight:600;color:var(--t-3);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 6px}
+  #gecmis .g-ziy{border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--bg-2)}
+  #gecmis .g-ust{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;padding:9px 12px;font-size:13px}
+  #gecmis .g-saat{font-variant-numeric:tabular-nums;font-weight:600;min-width:104px}
+  #gecmis .g-prog{min-width:170px}
+  #gecmis .g-sure{color:var(--t-2);font-size:12.5px}
+  #gecmis .g-cihaz{color:var(--t-3);font-size:12px}
+  #gecmis .g-ust .baglanti{margin-left:auto}
+  #gecmis .g-olaylar{border-top:1px solid var(--line);padding:6px 12px 10px;font-size:12.5px;max-height:340px;overflow:auto}
+  #gecmis .g-olay{display:flex;gap:10px;padding:2px 0}
+  #gecmis .g-olay time{color:var(--t-3);font-variant-numeric:tabular-nums;flex:none}
+  #gecmis .g-olay .adet{color:var(--t-3)}
+  #gecmis .canli{color:var(--ok);font-weight:600}
+  @media (max-width:600px){ #gecmis .g-saat,#gecmis .g-prog{min-width:0} #gecmis .g-ust .baglanti{margin-left:0} }
+</style>
 </head>
 <body>
 <div id="efekt-perde"></div>
@@ -71,6 +97,15 @@
     <div class="dosyalar" id="dosyalar"></div>
   </section>
 </main>
+
+<!-- ETKİNLİK GEÇMİŞİ: kullanıcının e-postasına tıklayınca açılır (veri: supabase/10-etkinlik-kaydi.sql) -->
+<dialog id="gecmis" aria-labelledby="g_baslik">
+  <div class="g-bas">
+    <div style="flex:1;min-width:0"><h3 id="g_baslik"></h3><div class="g-ozet" id="g_ozet"></div></div>
+    <button class="dugme ikincil kucuk" id="g_kapat" type="button">Kapat</button>
+  </div>
+  <div class="g-govde" id="g_govde"></div>
+</dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js?v=20261013c"></script>
@@ -154,7 +189,7 @@
     $('satirlar').innerHTML = gor.map(l => {
       const [c, t] = durum(l);
       return '<tr data-id="' + l.user_id + '">' +
-        '<td data-e="Kullanıcı" class="k-kim"><div class="eposta">' + kac(l.eposta) + '</div><input data-alan="ad" value="' + kac(l.ad) + '" placeholder="Ad Soyad (antete yazılır)" title="Excel antetinin ÇİZEN hücresine yazılır" style="margin:4px 0 2px;min-width:180px"><br>' +
+        '<td data-e="Kullanıcı" class="k-kim"><button type="button" class="eposta" data-is="gecmis" title="Giriş ve etkinlik geçmişi">' + kac(l.eposta) + '</button><input data-alan="ad" value="' + kac(l.ad) + '" placeholder="Ad Soyad (antete yazılır)" title="Excel antetinin ÇİZEN hücresine yazılır" style="margin:4px 0 2px;min-width:180px"><br>' +
           '<select data-alan="firma_id" title="Ortak santral kütüphanesi bu firmaya göre" style="margin:2px 0;padding:5px 7px;font-size:12.5px;min-width:180px">' + firmaSecenek(l.firma_id) + '</select>' +
           (l.firma ? '<div class="ufak" title="Kayıt olurken yazdığı firma">Kayıtta: ' + kac(l.firma) + '</div>' : '') + '</td>' +
         '<td data-e="Durum"><span class="rozet ' + c + '">' + t + '</span>' + (l.demo ? ' <span class="rozet bekliyor" title="Dosya indiremez">Demo</span>' : '') + '</td>' +
@@ -181,6 +216,7 @@
     if (pr) { pr.classList.toggle('acik'); pr.setAttribute('aria-pressed', pr.classList.contains('acik')); return; }
     const b = e.target.closest('button[data-is]'); if (!b) return;
     const tr = b.closest('tr'), id = tr.dataset.id;
+    if (b.dataset.is === 'gecmis') return gecmisAc(id);
     const ptr = $('satirlar').querySelector('tr.prog-satir[data-id="' + id + '"]');
     if (b.dataset.is === 'yil') { const i = tr.querySelector('[data-alan=bitis]'); i.value = yilEkle(i.value); return; }
     if (b.dataset.is === 'sil') {
@@ -220,6 +256,84 @@
     mesaj('Kaydedildi: ' + liste.find(l => l.user_id === id).eposta, 'tamam');
     ciz(); firmaCiz();
   });
+
+  // --- ETKİNLİK GEÇMİŞİ (13.10.2026): tablo yalnız son girişi gösterir; e-postaya tıklayınca bütün ziyaretler
+  //     (giriş saati, açık/aktif süre, program, cihaz) ve her ziyarette neler yapıldığı
+  const G_SAYFA = 100;
+  let gKim = null, gZiyaretler = [], gSonu = false;
+  function sure(sn){
+    sn = Math.max(0, Math.round(sn || 0));
+    if (sn < 60) return sn + ' sn';
+    const dk = Math.round(sn / 60); if (dk < 60) return dk + ' dk';
+    return Math.floor(dk / 60) + ' sa' + (dk % 60 ? ' ' + (dk % 60) + ' dk' : '');
+  }
+  function saat(s, sn){ return new Date(s).toLocaleTimeString('tr-TR', sn ? { hour:'2-digit', minute:'2-digit', second:'2-digit' } : { hour:'2-digit', minute:'2-digit' }); }
+  function programAdi(p){
+    if (!p) return 'Ana sayfa';
+    const [id, ek] = String(p).split(':'), pr = A.PROGRAMLAR.find(x => x.id === id);
+    return (pr ? pr.ad : id) + (ek === 'sade' ? ' (sade)' : '');
+  }
+  function canli(z){ return Date.now() - new Date(z.son_sinyal).getTime() < 90000; }
+  async function gecmisAc(id){
+    const l = liste.find(x => x.user_id === id); if (!l) return;
+    gKim = id; gZiyaretler = []; gSonu = false;
+    $('g_baslik').textContent = (l.ad ? l.ad + ' · ' : '') + l.eposta;
+    $('g_ozet').textContent = 'Yükleniyor…'; $('g_govde').innerHTML = '';
+    const dl = $('gecmis'); if (!dl.open) dl.showModal();
+    await gecmisYukle();
+  }
+  async function gecmisYukle(){
+    const kim = gKim;
+    const { data, error } = await sb.from('ziyaretler').select('id,baslangic,son_sinyal,aktif_sn,program,cihaz')
+      .eq('user_id', kim).order('baslangic', { ascending: false }).range(gZiyaretler.length, gZiyaretler.length + G_SAYFA - 1);
+    if (kim !== gKim) return;
+    if (error) { $('g_ozet').textContent = 'Okunamadı: ' + error.message; return; }
+    gZiyaretler = gZiyaretler.concat(data || []); gSonu = (data || []).length < G_SAYFA;
+    gecmisCiz();
+  }
+  function gecmisCiz(){
+    const l = liste.find(x => x.user_id === gKim) || {};
+    const sinir = Date.now() - 30 * 864e5, son30 = gZiyaretler.filter(z => new Date(z.baslangic).getTime() >= sinir);
+    const prg = {}; son30.forEach(z => { const a = programAdi(z.program); prg[a] = (prg[a] || 0) + (z.aktif_sn || 0); });
+    const toplam = son30.reduce((t, z) => t + (z.aktif_sn || 0), 0);
+    $('g_ozet').innerHTML = 'Son giriş: <b>' + tarihSaat(l.son_giris) + '</b>' +
+      (gZiyaretler.length && canli(gZiyaretler[0]) ? ' · <span class="canli">şu an açık</span>' : '') +
+      '<br>Son 30 gün: <b>' + son30.length + '</b> ziyaret · aktif <b>' + sure(toplam) + '</b>' +
+      (Object.keys(prg).length ? '<br>' + Object.entries(prg).sort((a, b) => b[1] - a[1]).map(([a, s]) => kac(a) + ' <b>' + sure(s) + '</b>').join(' · ') : '') +
+      (gSonu ? '' : '<br><span class="ufak">(özet yüklenen kayıtlardan; daha eskiler için aşağıdan yükle)</span>');
+    if (!gZiyaretler.length) { $('g_govde').innerHTML = '<p class="ufak" style="margin-top:14px">Henüz kayıt yok. Kayıt 13.10.2026 akşamından sonraki girişlerde tutulur.</p>'; return; }
+    let gun = '', h = '';
+    gZiyaretler.forEach(z => {
+      const d = new Date(z.baslangic), g = d.toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+      if (g !== gun) { gun = g; h += '<div class="g-gun">' + kac(g) + '</div>'; }
+      const acikSn = (new Date(z.son_sinyal) - d) / 1000;
+      h += '<div class="g-ziy" data-z="' + z.id + '"><div class="g-ust">' +
+        '<span class="g-saat">' + saat(z.baslangic) + ' – ' + (canli(z) ? '<span class="canli">açık</span>' : saat(z.son_sinyal)) + '</span>' +
+        '<span class="g-prog">' + kac(programAdi(z.program)) + '</span>' +
+        '<span class="g-sure" title="Açık: sayfanın açık kaldığı süre · Aktif: sekme önde ve fare/klavye kullanılırken">açık ' + sure(acikSn) + ' · aktif ' + sure(z.aktif_sn) + '</span>' +
+        '<span class="g-cihaz" title="' + kac(z.cihaz || '') + '">' + kac(cihazAdi(z.cihaz)) + '</span>' +
+        '<button class="baglanti" type="button" data-g="olay">Neler yaptı ▸</button></div></div>';
+    });
+    if (!gSonu) h += '<p style="text-align:center;margin-top:12px"><button class="dugme ikincil kucuk" type="button" data-g="daha">Daha eski kayıtlar</button></p>';
+    $('g_govde').innerHTML = h;
+  }
+  $('g_govde').addEventListener('click', async e => {
+    const b = e.target.closest('button[data-g]'); if (!b) return;
+    if (b.dataset.g === 'daha') { b.disabled = true; return gecmisYukle(); }
+    const kutu = b.closest('.g-ziy'), acik = kutu.querySelector('.g-olaylar');
+    if (acik) { acik.remove(); b.textContent = 'Neler yaptı ▸'; return; }
+    b.disabled = true;
+    const { data, error } = await sb.from('etkinlikler').select('zaman,olay,adet').eq('ziyaret_id', kutu.dataset.z).order('zaman').order('id').limit(3000);
+    b.disabled = false; b.textContent = 'Gizle ▾';
+    const d = document.createElement('div'); d.className = 'g-olaylar';
+    d.innerHTML = error ? '<span class="ufak">Okunamadı: ' + kac(error.message) + '</span>'
+      : (data || []).map(o => '<div class="g-olay"><time>' + saat(o.zaman, true) + '</time><span>' + kac(o.olay) + (o.adet > 1 ? ' <span class="adet">×' + o.adet + '</span>' : '') + '</span></div>').join('')
+        || '<span class="ufak">Bu ziyarette kaydedilen bir işlem yok (yalnız baktı).</span>';
+    kutu.appendChild(d);
+  });
+  $('g_kapat').addEventListener('click', () => $('gecmis').close());
+  $('gecmis').addEventListener('click', e => { if (e.target === $('gecmis')) $('gecmis').close(); });   // dışına tıklayınca kapanır
+  $('gecmis').addEventListener('close', () => { gKim = null; });
 
   // --- firmalar (ortak santral kütüphanesi)
   function firmaSecenek(secili){

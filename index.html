@@ -178,6 +178,7 @@
 <script src="kullanici-verisi.js"></script>
 <script src="bekleme.js?v=20261009d"></script>
 <script src="kutuphane.js"></script>
+<script src="etkinlik-kaydi.js?v=20261013d"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <script>
 (function(){
@@ -300,6 +301,7 @@
 
   // Çıkış: oturum bu cihazınsa boşaltılır (öteki cihaz sonra uyarısız girebilsin)
   async function cikis(){
+    if (window.EtkinlikKaydi) { EtkinlikKaydi.olay('Çıkış yaptı'); try { await EtkinlikKaydi.bitir(); } catch (e) {} }
     try { await sb.rpc('oturum_bitir'); } catch (e) {}
     await sb.auth.signOut({ scope: 'local' });
     location.reload();
@@ -371,7 +373,10 @@
     }
     const secilen = izinli.find(p => p.id === prm.get('ac'));
     // Ana sayfa: yöneticide her zaman, kullanıcıda birden çok programı varsa (?ac= yoksa)
-    if (!secilen && (d.yonetici || izinli.length > 1)) { anaSayfa(oturum, d, izinli); return; }
+    if (!secilen && (d.yonetici || izinli.length > 1)) {
+      if (window.EtkinlikKaydi) EtkinlikKaydi.baslat({ sb, program: null });   // ETKİNLİK KAYDI: ana sayfa ziyareti
+      anaSayfa(oturum, d, izinli); return;
+    }
 
     const program = secilen || izinli[0];
     $('menu_ana').hidden = !(d.yonetici || izinli.length > 1);
@@ -417,6 +422,7 @@
       sekmeSimgesi(program);
       f.title = program.ad;
       acik = true;
+      if (window.EtkinlikKaydi) EtkinlikKaydi.baslat({ sb, program: program.id + (surum === 'sade' && program.dosyalar.sade ? ':sade' : '') });
       donemselKontrol();
     } catch (e) {
       $('yukleniyor').hidden = true;
@@ -491,6 +497,7 @@
   function oturumKapandi(){
     if (kapandi) return;
     kapandi = true; acik = false;
+    if (window.EtkinlikKaydi) { EtkinlikKaydi.olay('Oturum başka cihazda açıldı — program kapandı'); EtkinlikKaydi.bitir(); }
     clearInterval(nabizSayac); clearInterval(sayac);
     const f = $('uygulama'); f.onload = null; f.src = 'about:blank'; f.hidden = true;
     if (window.Kutuphane) Kutuphane.kapat();
@@ -558,6 +565,7 @@
     const f = $('uygulama');
     try { f.contentWindow.AHU_CIZEN = ANTET_AD; } catch (e) {}
     if (DEMO) demoKur(f.contentWindow);
+    if (window.EtkinlikKaydi) EtkinlikKaydi.cerceve(f.contentWindow);
     try {
       f.contentDocument.addEventListener('click', function(e){
         const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;

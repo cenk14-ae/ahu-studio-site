@@ -38,7 +38,9 @@ window.AHU_AYAR = {
     { id: 'maliyet', renk: '#ffd43b', ad: 'HVAC Proje Maliyet', aciklama: 'HVAC projelerinin maliyet hesabı.', dosyalar: { tek: 'araclar/hvac-maliyet.html' } },
     { id: 'kontrol', renk: '#a9e34b', ad: 'Kontrol Tezgâhı', aciklama: 'Nem alma santrali kontrol tezgâhı: santral tasarımı, ESP32 yazılımı (.bin) ve kaynak kodu.', dosyalar: { tek: 'araclar/kontrol-tezgahi.html' } },
     // 09.10.2026
-    { id: 'plc', renk: '#ff6b6b', ad: 'Otomasyon Atölyesi', aciklama: 'PLC ve elektrik-elektronik devre simülasyonu: pano kurma, kumanda devreleri ve otomasyon denemeleri.', dosyalar: { tek: 'araclar/plc-atolyesi.html' } }
+    { id: 'plc', renk: '#ff6b6b', ad: 'Otomasyon Atölyesi', aciklama: 'PLC ve elektrik-elektronik devre simülasyonu: pano kurma, kumanda devreleri ve otomasyon denemeleri.', dosyalar: { tek: 'araclar/plc-atolyesi.html' } },
+    // 13.10.2026
+    { id: 'radyal', renk: '#20c997', ad: 'Radyal Fan Tasarım', aciklama: 'Debi ve basınçtan radyal fan tasarımı: çark ölçüleri, kanat açıları, kasa, şaft, motor seçimi ve çizimler.', dosyalar: { tek: 'araclar/radyal-fan-tasarim.html' } }
   ]
 };
 // Eski adla okuyan kod için (yönetim sayfasının dosya listesi)

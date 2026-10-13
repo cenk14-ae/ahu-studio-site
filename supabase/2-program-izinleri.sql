@@ -91,3 +91,9 @@ on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
 insert into public.programlar (id, ad, dosyalar) values
   ('radyal', 'Radyal Fan Tasarım', '{araclar/radyal-fan-tasarim.html}')
 on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
+
+-- 9) 13.10.2026 (öğleden sonra)
+insert into public.programlar (id, ad, dosyalar) values
+  ('denge', 'Isı Pompalı Rooftop Denge Hesabı', '{araclar/isi-pompasi-rooftop-denge.html}'),
+  ('ktatolye', 'Kontrol Tezgâhı Atölyesi', '{araclar/kontrol-tezgahi-atolyesi.html}')
+on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;

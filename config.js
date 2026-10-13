@@ -40,7 +40,9 @@ window.AHU_AYAR = {
     // 09.10.2026
     { id: 'plc', renk: '#ff6b6b', ad: 'Otomasyon Atölyesi', aciklama: 'PLC ve elektrik-elektronik devre simülasyonu: pano kurma, kumanda devreleri ve otomasyon denemeleri.', dosyalar: { tek: 'araclar/plc-atolyesi.html' } },
     // 13.10.2026
-    { id: 'radyal', renk: '#20c997', ad: 'Radyal Fan Tasarım', aciklama: 'Debi ve basınçtan radyal fan tasarımı: çark ölçüleri, kanat açıları, kasa, şaft, motor seçimi ve çizimler.', dosyalar: { tek: 'araclar/radyal-fan-tasarim.html' } }
+    { id: 'radyal', renk: '#20c997', ad: 'Radyal Fan Tasarım', aciklama: 'Debi ve basınçtan radyal fan tasarımı: çark ölçüleri, kanat açıları, kasa, şaft, motor seçimi ve çizimler.', dosyalar: { tek: 'araclar/radyal-fan-tasarim.html' } },
+    { id: 'denge', renk: '#4dabf7', ad: 'Isı Pompalı Rooftop Denge Hesabı', aciklama: 'Kompresör katalog verisinden ısı pompalı rooftop denge noktaları: ısıtma ve soğutmada gerçek kapasite, güç ve öneriler.', dosyalar: { tek: 'araclar/isi-pompasi-rooftop-denge.html' } },
+    { id: 'ktatolye', renk: '#94d82d', ad: 'Kontrol Tezgâhı Atölyesi', aciklama: 'Nem alma santrali otomasyonu dersleri: psikrometri, pano ve alet tanıma, kablolama tahtası ve canlı santral denemeleri.', dosyalar: { tek: 'araclar/kontrol-tezgahi-atolyesi.html' } }
   ]
 };
 // Eski adla okuyan kod için (yönetim sayfasının dosya listesi)

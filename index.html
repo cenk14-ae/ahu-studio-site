@@ -13,7 +13,7 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="stil.css?v=20261009b">
+<link rel="stylesheet" href="stil.css?v=20261013">
 <style>
   #menu{position:fixed;right:12px;bottom:12px;z-index:6;display:flex;gap:6px;opacity:.35;transition:opacity .15s}
   #menu:hover,#menu:focus-within{opacity:1}
@@ -129,7 +129,13 @@
     <button class="dugme ikincil kucuk" id="ana_cikis" type="button">Çıkış</button>
   </div>
   <main>
-    <h2 class="ana-baslik">Programlar</h2>
+    <div class="ana-baslik-satir">
+      <h2 class="ana-baslik">Programlar</h2>
+      <span class="sira-ipucu" id="sira_ipucu" hidden>Kartları sürükleyerek yerleştir</span>
+      <span class="bosluk"></span>
+      <button type="button" class="sira-dugme" id="sira_sifirla" hidden>Varsayılan sıra</button>
+      <button type="button" class="sira-dugme" id="sira_dugme" hidden>Sırayı düzenle</button>
+    </div>
     <div class="kartlar" id="ana_programlar"></div>
     <h2 class="ana-baslik">Yönetim</h2>
     <div class="kartlar">
@@ -618,12 +624,15 @@
     // Kartın TAMAMI tıklanır (Cenk: «aç tuşu istemiyorum, kutunun herhangi bir yerine tıklayınca açılsın»).
     // Kart bir <a> — orta tık / Ctrl+tık yeni sekmede açar, klavyeyle Enter çalışır.
     // Birden çok sürümü olan programda (AHU, yalnız yönetici) kart varsayılanı açar; öteki sürüm köşede küçük bağlantı.
+    SIRA.oturum = oturum; SIRA.varsayilan = izinli.map(p => p.id);
+    izinli = siraUygula(izinli, siraOku(oturum));
+    $('sira_dugme').hidden = izinli.length < 2;
     $('ana_programlar').innerHTML = izinli.map(p => {
       const surumler = d.yonetici ? Object.keys(p.dosyalar) : [Object.keys(p.dosyalar)[0]];
       const href = '?ac=' + encodeURIComponent(p.id) + (surumler.length > 1 ? '&surum=' + surumler[0] : '');
       const diger = surumler.slice(1).map(s => '<span class="pkart-surum" role="link" tabindex="0" data-href="?ac=' + encodeURIComponent(p.id) + '&surum=' + s + '">' +
         (s === 'sade' ? 'sade sürüm' : kac(s)) + ' →</span>').join('');
-      return '<a class="pkart pkart-tik" href="' + href + '" style="--pr:' + kac(p.renk || '#4d8dff') + '">' + diger + ikonHtml(p) + '<b>' + kac(p.ad) + '</b>' +
+      return '<a class="pkart pkart-tik" data-id="' + kac(p.id) + '" href="' + href + '" style="--pr:' + kac(p.renk || '#4d8dff') + '">' + diger + ikonHtml(p) + '<b>' + kac(p.ad) + '</b>' +
         '<span class="ufak">' + kac(p.aciklama || '') + '</span></a>';
     }).join('');
   }
@@ -636,9 +645,122 @@
   });
   $('ana_programlar').addEventListener('keydown', e => {
     const s = e.target.closest && e.target.closest('.pkart-surum');
-    if (s && e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); location.href = s.dataset.href; }
+    if (s && e.key === 'Enter' && !$('ana_programlar').classList.contains('duzen')) { e.preventDefault(); e.stopPropagation(); location.href = s.dataset.href; }
   });
   $('ana_cikis').addEventListener('click', cikis);
+
+  // KART SIRASI — kullanıcı ana sayfadaki program kartlarını sürükleyip yerleştirir (Cenk, 13.10.2026).
+  // Sıra hesabın kendi user_metadata'sında (kart_sirasi) durur → her cihazda aynı; localStorage yalnız hızlı önbellek.
+  // Sırada olmayan (yeni açılan) program sona, kendi config sırasıyla eklenir.
+  const SIRA = { oturum: null, varsayilan: [] };
+  const siraAnahtar = () => 'ahu_kart_sirasi:' + SIRA.oturum.user.id;
+  function siraOku(oturum){
+    const m = oturum.user.user_metadata && oturum.user.user_metadata.kart_sirasi;
+    if (Array.isArray(m)) return m;
+    try { const s = JSON.parse(localStorage.getItem('ahu_kart_sirasi:' + oturum.user.id)); if (Array.isArray(s)) return s; } catch (e) {}
+    return null;
+  }
+  function siraUygula(liste, sira){
+    if (!sira || !sira.length) return liste;
+    const yer = id => { const i = sira.indexOf(id); return i < 0 ? 1e6 : i; };
+    return liste.map((p, i) => [p, i]).sort((a, b) => (yer(a[0].id) - yer(b[0].id)) || (a[1] - b[1])).map(x => x[0]);
+  }
+  const kartlar = () => Array.from($('ana_programlar').querySelectorAll('.pkart[data-id]'));
+  const siraSimdi = () => kartlar().map(k => k.dataset.id);
+  function siraKaydet(){
+    const ids = siraSimdi();
+    const varsayilanmi = ids.join() === SIRA.varsayilan.join();
+    try { if (varsayilanmi) localStorage.removeItem(siraAnahtar()); else localStorage.setItem(siraAnahtar(), JSON.stringify(ids)); } catch (e) {}
+    sb.auth.updateUser({ data: { kart_sirasi: varsayilanmi ? null : ids } }).then(function(){}, function(){});
+  }
+  // Diğer kartlar yeni yerlerine kayarak geçer (FLIP): önce eski konumu ölç, DOM'u değiştir, farkı geri sar ve bırak.
+  function kaydir(degistir, haric){
+    const once = new Map(kartlar().map(k => [k, k.getBoundingClientRect()]));
+    degistir();
+    kartlar().forEach(k => {
+      if (k === haric) return;
+      const a = once.get(k), b = k.getBoundingClientRect();
+      const dx = a.left - b.left, dy = a.top - b.top;
+      if (!dx && !dy) return;
+      k.style.transition = 'none'; k.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+      requestAnimationFrame(() => requestAnimationFrame(() => { k.style.transition = 'transform .22s cubic-bezier(.16,1,.3,1)'; k.style.transform = ''; }));
+      setTimeout(() => { k.style.transition = ''; }, 300);
+    });
+  }
+  function duzenModu(ac){
+    const kap = $('ana_programlar');
+    kap.classList.toggle('duzen', ac);
+    $('sira_dugme').textContent = ac ? 'Bitti' : 'Sırayı düzenle';
+    $('sira_dugme').classList.toggle('acik', ac);
+    $('sira_ipucu').hidden = !ac;
+    $('sira_sifirla').hidden = !ac;
+  }
+  $('sira_dugme').addEventListener('click', () => duzenModu(!$('ana_programlar').classList.contains('duzen')));
+  $('sira_sifirla').addEventListener('click', () => {
+    const kap = $('ana_programlar');
+    const bul = new Map(kartlar().map(k => [k.dataset.id, k]));
+    kaydir(() => SIRA.varsayilan.forEach(id => { if (bul.has(id)) kap.appendChild(bul.get(id)); }));
+    siraKaydet();
+  });
+  // Düzen kipinde kart açılmaz (öteki sürüm bağlantısı da)
+  $('ana_programlar').addEventListener('click', e => {
+    if ($('ana_programlar').classList.contains('duzen')) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  // Sürükleme: fare + dokunma (pointer olayları). Tutulan kart parmağı izler; altına geldiği kartın yerine geçer.
+  let tut = null;
+  $('ana_programlar').addEventListener('pointerdown', e => {
+    const kap = $('ana_programlar');
+    const k = kap.classList.contains('duzen') && e.target.closest('.pkart[data-id]');
+    if (!k || e.button > 0) return;
+    e.preventDefault();
+    tut = { k, x: e.clientX, y: e.clientY, ilk: siraSimdi().join() };
+    k.setPointerCapture(e.pointerId);
+    k.classList.add('tasiniyor');
+  });
+  $('ana_programlar').addEventListener('pointermove', e => {
+    if (!tut) return;
+    const k = tut.k, kap = $('ana_programlar');
+    const h = kartlar().find(c => {
+      if (c === k) return false;
+      const r = c.getBoundingClientRect();
+      return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    });
+    if (h) {
+      const ol = k.offsetLeft, ot = k.offsetTop;
+      const liste = kartlar();
+      kaydir(() => kap.insertBefore(k, liste.indexOf(h) < liste.indexOf(k) ? h : h.nextSibling), k);
+      tut.x += k.offsetLeft - ol; tut.y += k.offsetTop - ot;   // kart yeni yuvasına geçti; parmağın altında kalsın
+    }
+    k.style.transform = 'translate(' + (e.clientX - tut.x) + 'px,' + (e.clientY - tut.y) + 'px)';
+  });
+  function birak(){
+    if (!tut) return;
+    const k = tut.k, degisti = siraSimdi().join() !== tut.ilk;
+    tut = null;
+    k.classList.remove('tasiniyor');
+    k.style.transition = 'transform .2s cubic-bezier(.16,1,.3,1)'; k.style.transform = '';
+    setTimeout(() => { k.style.transition = ''; }, 250);
+    if (degisti) siraKaydet();
+  }
+  $('ana_programlar').addEventListener('dragstart', e => { if ($('ana_programlar').classList.contains('duzen')) e.preventDefault(); });
+  $('ana_programlar').addEventListener('pointerup', birak);
+  $('ana_programlar').addEventListener('pointercancel', birak);
+  // Klavye: düzen kipinde odaktaki kart ok tuşlarıyla bir öne / bir arkaya
+  $('ana_programlar').addEventListener('keydown', e => {
+    const kap = $('ana_programlar');
+    if (!kap.classList.contains('duzen')) return;
+    const k = e.target.closest('.pkart[data-id]');
+    if (!k) return;
+    const geri = e.key === 'ArrowLeft' || e.key === 'ArrowUp', ileri = e.key === 'ArrowRight' || e.key === 'ArrowDown';
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); return; }
+    if (!geri && !ileri) return;
+    e.preventDefault();
+    const komsu = geri ? k.previousElementSibling : k.nextElementSibling;
+    if (!komsu) return;
+    kaydir(() => kap.insertBefore(k, geri ? komsu : komsu.nextSibling));
+    k.focus();
+    siraKaydet();
+  });
 
   // Program simgesi (ikonlar.js) — kartta renkli kutu içinde, sekmede favicon olarak
   const IKON = window.AHU_IKON || {};

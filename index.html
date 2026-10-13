@@ -707,32 +707,53 @@
     if ($('ana_programlar').classList.contains('duzen')) { e.preventDefault(); e.stopPropagation(); }
   }, true);
   // Sürükleme: fare + dokunma (pointer olayları). Tutulan kart parmağı izler; altına geldiği kartın yerine geçer.
+  // Hedef, kartların KAYAN görüntüsüne değil yerleşim yuvalarına (offset) göre seçilir; parmak yuvanın iç
+  // bölgesine girmeden yer değişmez → kayan kartlar yüzünden ileri-geri titreme olmaz (Cenk: «çok pırpır yapıyor»).
+  // Parmak ekranın üst/alt kenarına yaklaşınca sayfa kendiliğinden kayar → alttaki kartlara da ulaşılır.
   let tut = null;
+  function yuva(k){
+    const kap = $('ana_programlar'), r = kap.getBoundingClientRect();
+    return { x: r.left + k.offsetLeft - kap.offsetLeft, y: r.top + k.offsetTop - kap.offsetTop, w: k.offsetWidth, h: k.offsetHeight };
+  }
   $('ana_programlar').addEventListener('pointerdown', e => {
     const kap = $('ana_programlar');
     const k = kap.classList.contains('duzen') && e.target.closest('.pkart[data-id]');
     if (!k || e.button > 0) return;
     e.preventDefault();
-    tut = { k, x: e.clientX, y: e.clientY, ilk: siraSimdi().join() };
+    const y = yuva(k);
+    tut = { k, px: e.clientX, py: e.clientY, dx: e.clientX - y.x, dy: e.clientY - y.y, ilk: siraSimdi().join(), kilit: 0,
+            enAlt: document.documentElement.scrollHeight - innerHeight };   // taşınan kart sayfayı uzatmasın: en fazla ilk boy kadar kay
     k.setPointerCapture(e.pointerId);
     k.classList.add('tasiniyor');
+    requestAnimationFrame(surukleAdim);
   });
   $('ana_programlar').addEventListener('pointermove', e => {
     if (!tut) return;
-    const k = tut.k, kap = $('ana_programlar');
-    const h = kartlar().find(c => {
-      if (c === k) return false;
-      const r = c.getBoundingClientRect();
-      return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
-    });
-    if (h) {
-      const ol = k.offsetLeft, ot = k.offsetTop;
-      const liste = kartlar();
-      kaydir(() => kap.insertBefore(k, liste.indexOf(h) < liste.indexOf(k) ? h : h.nextSibling), k);
-      tut.x += k.offsetLeft - ol; tut.y += k.offsetTop - ot;   // kart yeni yuvasına geçti; parmağın altında kalsın
-    }
-    k.style.transform = 'translate(' + (e.clientX - tut.x) + 'px,' + (e.clientY - tut.y) + 'px)';
+    tut.px = e.clientX; tut.py = e.clientY;
   });
+  function surukleAdim(){
+    if (!tut) return;
+    const k = tut.k, kap = $('ana_programlar'), px = tut.px, py = tut.py;
+    // kenarda kendiliğinden kaydırma: kenara ne kadar yakınsa o kadar hızlı
+    const kenar = Math.min(90, innerHeight * 0.15);
+    if (py < kenar) scrollBy(0, -Math.ceil((kenar - py) / kenar * 16));
+    else if (py > innerHeight - kenar && scrollY < tut.enAlt) scrollTo(0, Math.min(tut.enAlt, scrollY + Math.ceil((py - innerHeight + kenar) / kenar * 16)));
+    if (performance.now() > tut.kilit) {
+      const h = kartlar().find(c => {
+        if (c === k) return false;
+        const s = yuva(c), mx = s.w * 0.2, my = s.h * 0.2;
+        return px > s.x + mx && px < s.x + s.w - mx && py > s.y + my && py < s.y + s.h - my;
+      });
+      if (h) {
+        const liste = kartlar();
+        kaydir(() => kap.insertBefore(k, liste.indexOf(h) < liste.indexOf(k) ? h : h.nextSibling), k);
+        tut.kilit = performance.now() + 150;
+      }
+    }
+    const s = yuva(k);
+    k.style.transform = 'translate(' + (px - tut.dx - s.x) + 'px,' + (py - tut.dy - s.y) + 'px)';
+    requestAnimationFrame(surukleAdim);
+  }
   function birak(){
     if (!tut) return;
     const k = tut.k, degisti = siraSimdi().join() !== tut.ilk;

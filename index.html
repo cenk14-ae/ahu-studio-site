@@ -397,8 +397,7 @@
     try {
       const veriSozu = veriVar ? KullaniciVerisi.hazirla({ sb, uid: oturum.user.id, programId: program.id, yonetici: !!d.yonetici, gosterge: $('menu_bulut') }) : null;
       if (veriSozu) veriSozu.catch(function(){});
-      const { data: blob, error } = await sb.storage.from(A.KOVA).download(dosyaAdi);
-      if (error) throw error;
+      const blob = await programIndir(dosyaAdi);
       // Programlar kovada SIKIŞTIRILMIŞ (gzip) saklanır (13.10.2026, kota: indirme ~4–5 kat küçük); adı aynı kalır,
       // ilk iki bayt 1f 8b ise burada çözülür. Sıkıştırılmamış eski dosya da açılır.
       const bas = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
@@ -432,6 +431,24 @@
         : 'Program dosyası alınamadı: ' + hataMetni(e) + (d.yonetici ? ' — Yönetim sayfasından programı yüklediğinden emin ol.' : ''), 'hata');
       $('yenile').hidden = false; perdeKaldir();
     }
+  }
+
+  // Program dosyası ÖNBELLEKSİZ iner (14.10.2026). Kovadaki bazı dosyalar geçersiz bir önbellek başlığı
+  // ('cache-control: public, 0') taşıyordu; tarayıcı onu yok sayıp dosyayı yaşına göre saatlerce taze
+  // saydı ve güncellemeden sonra ESKİ programı açtı — sunucu eski damgaya 409 verdi, arayüz yarım kaldı.
+  // cache: 'no-store' tarayıcı önbelleğine hiç bakmaz, her açılışta kovadaki güncel dosya gelir.
+  async function programIndir(dosyaAdi){
+    const { data } = await sb.auth.getSession();
+    const belirtec = data.session ? data.session.access_token : A.SUPABASE_ANON_KEY;
+    const yol = dosyaAdi.split('/').map(encodeURIComponent).join('/');
+    const r = await fetch(A.SUPABASE_URL + '/storage/v1/object/' + A.KOVA + '/' + yol, {
+      headers: { apikey: A.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + belirtec }, cache: 'no-store' });
+    if (!r.ok) {
+      let m = '';
+      try { const j = await r.json(); m = j.message || j.error || ''; } catch (e) {}
+      throw new Error(m || ('HTTP ' + r.status));
+    }
+    return r.blob();
   }
 
   // Açıkken lisans arada bir yeniden sorulur. Süresi dolarsa ÇALIŞMA KESİLMEZ

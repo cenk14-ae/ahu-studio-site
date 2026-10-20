@@ -20,7 +20,9 @@ window.AHU_AYAR = {
     { id: 'ahu', renk: '#4d8dff', ad: 'AHU Studio', aciklama: 'Klima santrali panel konfigüratörü: 3B tasarım, DXF üretme, profil kesim listesi ve sac yerleşimi.',
       dosyalar: { tam: 'index.html', sade: 'index-sade.html' } },
     // Araçlarım (08.10.2026) — yalnız yönetici açar (dosya_izni bu adları vermez)
-    { id: 'hesap', renk: '#8b7bff', ad: 'Hesap Merkezi', aciklama: '448 hesap, 7 araç — mekanik tesisat hesapları tek yerde.', dosyalar: { tek: 'araclar/hesap-merkezi.html' } },
+    { id: 'hesap', renk: '#8b7bff', ad: 'Hesap Merkezi', aciklama: '447 hesap, 7 araç — mekanik tesisat hesapları tek yerde.', dosyalar: { tek: 'araclar/hesap-merkezi.html' } },
+    // 20.10.2026 — Hesap Merkezi'ndeki Otopark Projelendirme modülü kendi programına ayrıldı
+    { id: 'otoproje', renk: '#f2794e', ad: 'Otopark Projelendirme', aciklama: 'Kapalı otopark duman tahliyesi ve taze hava: kat / zon bazlı şaft debileri, kesitler, karşı basınç, fan seçimi, damper ve jet fan listesi, Excel ve PDF.', dosyalar: { tek: 'araclar/otopark-projelendirme.html' } },
     { id: 'batarya', renk: '#f0b445', ad: 'Batarya Onay Resmi Kontrolü', aciklama: "İmalatçının onay resmini sipariş föyü ve cihaz DXF'iyle karşılaştırır; ölçü ve kasa uyumunu denetler.", dosyalar: { tek: 'araclar/batarya.html' } },
     { id: 'order', renk: '#3fcf8e', ad: 'İş Emri & Malzeme Listesi', aciklama: "Projeler, iş emirleri ve malzeme listeleri; DXF'ten teknik resim ve PDF çıktısı.", dosyalar: { tek: 'araclar/order.html' } },
     { id: 'cfd', renk: '#22b8cf', ad: 'CFD Analiz Raporu', aciklama: 'Otopark jet fan CFD raporunu form üzerinden üretir; yazdır → PDF.', dosyalar: { tek: 'araclar/cfd-rapor.html' } },

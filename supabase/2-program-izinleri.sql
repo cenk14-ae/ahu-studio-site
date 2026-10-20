@@ -97,3 +97,8 @@ insert into public.programlar (id, ad, dosyalar) values
   ('denge', 'Isı Pompalı Rooftop Denge Hesabı', '{araclar/isi-pompasi-rooftop-denge.html}'),
   ('ktatolye', 'Kontrol Tezgâhı Atölyesi', '{araclar/kontrol-tezgahi-atolyesi.html}')
 on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
+
+-- 10) 20.10.2026 — Otopark Projelendirme, Hesap Merkezi'nden ayrı program
+insert into public.programlar (id, ad, dosyalar) values
+  ('otoproje', 'Otopark Projelendirme', '{araclar/otopark-projelendirme.html}')
+on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;

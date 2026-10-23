@@ -65,6 +65,10 @@ Veritabanında rol `lisanslar.surum` alanıdır (`tam` = Pro, `sade` = Normal); 
   doldurur; başvurular Yönetim'in en üstünde de listelenir. Ayarlar fonksiyonun gizli ayarlarında:
   `RESEND_API_KEY`, `BILDIRIM_ALICI`, `BILDIRIM_GONDEREN`, `BILDIRIM_SIRRI` (= vault `bildirim_sirri`).
   Gönderim sonuçları: SQL `select * from net._http_response order by created desc`.
+- **E-posta doğrulaması** (`supabase/13-eposta-dogrulama.sql`, 23.10.2026): Auth'ta *Confirm email* KAPALI —
+  kayıt olan hemen demoya girer. Doğrulama yalnız **lisans başvurusunda**: «Kod gönder» → kullanıcının adresine
+  6 haneli kod (15 dk, 5 deneme, dakikada 1 / saatte 5) → doğru kodla `lisanslar.eposta_dogrulandi` dolar.
+  Auth e-postaları (şifre sıfırlama) Resend SMTP ile `noreply@cenkaltinay.com`'dan gider.
 - **Program güncellemesi** (çekirdek sunucuda — sıra ÖNEMLİ):
   1. `SANTRAL APP`'te `_sade-uret.js` → `_sunucu-uret.js` (ince dosyalar `cevrimici/`'ye + sunucu paketi)
   2. `sunucu-esdeger-test.js` → 0 fark

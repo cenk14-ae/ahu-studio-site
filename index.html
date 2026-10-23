@@ -35,6 +35,10 @@
   .bv-ust h1{margin:0 0 4px}
   .bv-ust button{background:none;border:0;color:var(--t-2);font-size:16px;cursor:pointer;padding:4px 8px;border-radius:6px}
   .bv-ust button:hover{color:var(--t-1);background:var(--bg-3)}
+  .bv-not{color:var(--t-2);font-size:12.5px;line-height:1.5;margin:0 0 8px}
+  .bv-kod-satir{display:flex;gap:8px}
+  .bv-kod-satir input{flex:1;min-width:0;letter-spacing:3px}
+  .bv-kod-satir .dugme{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -150,6 +154,15 @@
     </select>
     <label for="bv_not">Not (isteğe bağlı)</label>
     <textarea id="bv_not" rows="3" maxlength="2000" placeholder="Kullanıcı sayısı, ilgilendiğin programlar…"></textarea>
+    <!-- E-POSTA DOĞRULAMASI (13-eposta-dogrulama.sql): demo doğrulamasız açılır, lisans başvurusu kod ister -->
+    <div id="bv_dogrula" hidden>
+      <label for="bv_kod">E-posta doğrulama kodu</label>
+      <p class="bv-not" id="bv_dogrula_metin"></p>
+      <div class="bv-kod-satir">
+        <input id="bv_kod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" placeholder="6 haneli kod">
+        <button class="dugme ikincil" id="bv_kod_gonder" type="button">Kod gönder</button>
+      </div>
+    </div>
     <button class="dugme tam" id="bv_gonder" type="submit">Başvuruyu gönder</button>
     <div class="mesaj" id="bv_mesaj" role="status"></div>
   </form>
@@ -271,7 +284,7 @@
     $('kayit_alanlari').hidden = !kayit;
     $('baslik').textContent = kayit ? 'Hesap oluştur' : 'Giriş yap';
     // OTOMATİK DENEME (23.10.2026, supabase/11-deneme.sql): kayıt olan hesap 7 gün demo olarak hemen açılır
-    $('aciklama').textContent = kayit ? 'Kayıt ol, e-postanı doğrula: 7 gün ücretsiz demo hesabınla dene (dosya indirme kapalı). Lisans başvurusunu hesabından yapabilirsin.' : 'Lisanslı hesabınla devam et.';
+    $('aciklama').textContent = kayit ? 'Kayıt ol, hemen 7 gün ücretsiz demo hesabınla dene (dosya indirme kapalı). Lisans başvurusunu hesabından yapabilirsin.' : 'Lisanslı hesabınla devam et.';
     $('gonder').textContent = kayit ? 'Kayıt ol' : 'Giriş yap';
     $('sifre').autocomplete = kayit ? 'new-password' : 'current-password';
     mesaj('');
@@ -309,6 +322,8 @@
           data: { ad: $('ad').value.trim(), firma: $('firma').value.trim() },
           emailRedirectTo: location.origin + location.pathname } });
         if (error) throw error;
+        // E-posta onayı kapalı (13-eposta-dogrulama.sql): oturum hemen gelir, SIGNED_IN demoyu açar.
+        // Onay yeniden açılırsa eski akış: bağlantıyla doğrula, sonra gir.
         if (!data.session) mesaj('Kayıt alındı. E-postana gelen bağlantıyla adresini doğrula; ardından 7 günlük demo hesabınla giriş yapabilirsin.', 'tamam');
       } else {
         const { error } = await sb.auth.signInWithPassword({ email: eposta, password: sifre, options: { captchaToken: captchaTokenSu } });
@@ -363,7 +378,7 @@
   async function lisansaBakGovde(oturum){
     goster('bolum_lisans'); mesaj('');
     $('kim').textContent = oturum.user.email;
-    BASVURU_UID = oturum.user.id;
+    BASVURU_UID = oturum.user.id; BASVURU_EPOSTA = oturum.user.email || '';
     $('yenile').hidden = true; $('basvuru_ac').hidden = true;
     $('lisans_baslik').textContent = 'Lisans kontrol ediliyor…';
     $('lisans_metin').textContent = '';
@@ -497,7 +512,14 @@
   // ---------------- LİSANS BAŞVURUSU (23.10.2026) ----------------
   // Demo / süresi dolmuş kullanıcı formu doldurur → lisans_basvur() (oturum şart, 10 dk'da bir) →
   // tetikleyici yöneticiye e-posta yollar. Ad / firma hesaptan önceden doldurulur.
-  let BASVURU_UID = null;
+  // E-POSTA DOĞRULAMASI (13-eposta-dogrulama.sql): demo doğrulamasız açılır; e-postası doğrulanmamış
+  // hesap başvururken «Kod gönder» → e-postasına gelen 6 haneli kodu yazar (bir kez; sonra hesap doğrulanmış).
+  let BASVURU_UID = null, BASVURU_EPOSTA = '', BV_DOGRULANDI = true, kodSayac = null;
+  function bvDogrulamaGoster(){
+    $('bv_dogrula').hidden = BV_DOGRULANDI;
+    $('bv_dogrula_metin').textContent = 'Başvurunun sana ulaşabilmesi için ' + BASVURU_EPOSTA +
+      ' adresini doğrula: «Kod gönder»e bas, e-postana gelen kodu yaz (gereksiz klasörüne de bak).';
+  }
   async function basvuruAc(){
     const m = $('basvuru_modal');
     $('bv_mesaj').className = 'mesaj'; $('bv_gonder').disabled = false;
@@ -506,11 +528,27 @@
     try {
       const [h, s] = await Promise.all([
         sb.from('lisanslar').select('ad,firma').eq('user_id', BASVURU_UID).maybeSingle(),
-        sb.rpc('son_lisans_basvurum')]);
+        sb.rpc('basvuru_durumum')]);
       if (h.data) { if (!$('bv_ad').value) $('bv_ad').value = h.data.ad || ''; if (!$('bv_firma').value) $('bv_firma').value = h.data.firma || ''; }
-      if (s.data) bvMesaj('Son başvurun ' + new Date(s.data).toLocaleDateString('tr-TR') + ' tarihinde alındı. Yeni bilgi eklemek istersen yeniden gönderebilirsin.', 'bilgi');
+      if (s.data) {
+        BV_DOGRULANDI = !!s.data.dogrulandi; bvDogrulamaGoster();
+        if (s.data.son) bvMesaj('Son başvurun ' + new Date(s.data.son).toLocaleDateString('tr-TR') + ' tarihinde alındı. Yeni bilgi eklemek istersen yeniden gönderebilirsin.', 'bilgi');
+      }
     } catch (e) {}
   }
+  $('bv_kod_gonder').addEventListener('click', async () => {
+    const b = $('bv_kod_gonder'); b.disabled = true;
+    const { data, error } = await sb.rpc('eposta_kodu_gonder');
+    if (error) { bvMesaj(hataMetni(error), 'hata'); b.disabled = false; return; }
+    if (data === 'zaten') { BV_DOGRULANDI = true; bvDogrulamaGoster(); bvMesaj('E-posta adresin zaten doğrulanmış.', 'tamam'); return; }
+    bvMesaj('Kod ' + BASVURU_EPOSTA + ' adresine gönderildi. 15 dakika geçerli.', 'bilgi');
+    $('bv_kod').focus();
+    // aynı dakika içinde yeniden istenmesin (sunucu da reddeder)
+    let k = 60; b.textContent = 'Tekrar (' + k + ')';
+    clearInterval(kodSayac);
+    kodSayac = setInterval(() => { k--; if (k > 0) { b.textContent = 'Tekrar (' + k + ')'; return; }
+      clearInterval(kodSayac); b.textContent = 'Kodu yeniden gönder'; b.disabled = false; }, 1000);
+  });
   function bvMesaj(m, tur){ const e = $('bv_mesaj'); e.textContent = m; e.className = 'mesaj goster ' + tur; }
   function basvuruKapat(){ $('basvuru_modal').hidden = true; }
   $('basvuru_ac').addEventListener('click', basvuruAc);
@@ -520,10 +558,19 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('basvuru_modal').hidden) basvuruKapat(); });
   $('bv_form').addEventListener('submit', async ev => {
     ev.preventDefault();
+    if (!BV_DOGRULANDI && !/^\d{6}$/.test($('bv_kod').value.trim())) {
+      bvMesaj('Önce e-posta adresini doğrula: «Kod gönder»e bas, gelen 6 haneli kodu yaz.', 'hata'); $('bv_kod').focus(); return;
+    }
     $('bv_gonder').disabled = true;
-    const { error } = await sb.rpc('lisans_basvur', { ad: $('bv_ad').value, firma: $('bv_firma').value,
-      telefon: $('bv_tel').value, surum: $('bv_surum').value, mesaj: $('bv_not').value });
+    const { data, error } = await sb.rpc('lisans_basvur', { ad: $('bv_ad').value, firma: $('bv_firma').value,
+      telefon: $('bv_tel').value, surum: $('bv_surum').value, mesaj: $('bv_not').value,
+      kod: BV_DOGRULANDI ? null : $('bv_kod').value.trim() });
     if (error) { bvMesaj(hataMetni(error), 'hata'); $('bv_gonder').disabled = false; return; }
+    if (data && data.hata) {
+      if (data.hata === 'dogrulama') { BV_DOGRULANDI = false; bvDogrulamaGoster(); }
+      bvMesaj(data.mesaj, 'hata'); $('bv_gonder').disabled = false; return;
+    }
+    BV_DOGRULANDI = true; bvDogrulamaGoster(); $('bv_kod').value = '';
     if (window.EtkinlikKaydi) EtkinlikKaydi.olay('Lisans başvurusu gönderdi');
     bvMesaj('Başvurun alındı. Cenk Altınay en kısa sürede seninle iletişime geçecek.', 'tamam');
     $('bv_not').value = '';

@@ -56,7 +56,9 @@ Natro'nun kendi park/yönlendirme A kayıtları varsa silinir. Yayılması 10 dk
 Veritabanında rol `lisanslar.surum` alanıdır (`tam` = Pro, `sade` = Normal); izin depo kuralında (`dosya_izni`) uygulanır.
 
 ## Günlük kullanım
-- **Yeni müşteri:** kendisi kayıt olur → Yönetim'de *Aktif* işaretle, sürüm + bitiş seç → Kaydet.
+- **Yeni müşteri:** kendisi kayıt olur → hesabı **otomatik 7 günlük demo deneme** olarak hemen açılır
+  (aktif + Demo + Pro, bitiş = kayıt + 7 gün, yalnız AHU Studio; `supabase/11-deneme.sql`). Lisans verince
+  Yönetim'de *Demo*'yu kaldır, sürüm + bitiş seç → Kaydet. Süre dolan deneme girişte «Deneme süresi doldu» görür.
 - **Program güncellemesi** (çekirdek sunucuda — sıra ÖNEMLİ):
   1. `SANTRAL APP`'te `_sade-uret.js` → `_sunucu-uret.js` (ince dosyalar `cevrimici/`'ye + sunucu paketi)
   2. `sunucu-esdeger-test.js` → 0 fark

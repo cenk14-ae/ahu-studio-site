@@ -234,7 +234,8 @@
     const kayit = kip === 'kayit';
     $('kayit_alanlari').hidden = !kayit;
     $('baslik').textContent = kayit ? 'Hesap oluştur' : 'Giriş yap';
-    $('aciklama').textContent = kayit ? 'Kayıttan sonra hesabın yönetici onayıyla açılır.' : 'Lisanslı hesabınla devam et.';
+    // OTOMATİK DENEME (23.10.2026, supabase/11-deneme.sql): kayıt olan hesap 7 gün demo olarak hemen açılır
+    $('aciklama').textContent = kayit ? 'Kayıt ol, e-postanı doğrula: 7 gün ücretsiz demo hesabınla dene (dosya indirme kapalı).' : 'Lisanslı hesabınla devam et.';
     $('gonder').textContent = kayit ? 'Kayıt ol' : 'Giriş yap';
     $('sifre').autocomplete = kayit ? 'new-password' : 'current-password';
     mesaj('');
@@ -272,7 +273,7 @@
           data: { ad: $('ad').value.trim(), firma: $('firma').value.trim() },
           emailRedirectTo: location.origin + location.pathname } });
         if (error) throw error;
-        if (!data.session) mesaj('Kayıt alındı. E-postana gelen bağlantıyla adresini doğrula; ardından hesabın yönetici onayıyla açılacak.', 'tamam');
+        if (!data.session) mesaj('Kayıt alındı. E-postana gelen bağlantıyla adresini doğrula; ardından 7 günlük demo hesabınla giriş yapabilirsin.', 'tamam');
       } else {
         const { error } = await sb.auth.signInWithPassword({ email: eposta, password: sifre, options: { captchaToken: captchaTokenSu } });
         if (error) throw error;
@@ -337,7 +338,10 @@
     $('menu_yonetim').hidden = !d.yonetici;
 
     if (!d.gecerli) {
-      if (d.aktif && d.bitis) {
+      if (d.aktif && d.bitis && d.demo) {
+        $('lisans_baslik').textContent = 'Deneme süresi doldu';
+        $('lisans_metin').textContent = 'Demo deneme süren ' + trTarih(d.bitis) + ' tarihinde sona erdi. Lisans için Cenk Altınay ile iletişime geç.';
+      } else if (d.aktif && d.bitis) {
         $('lisans_baslik').textContent = 'Lisans süresi doldu';
         $('lisans_metin').textContent = 'Lisansın ' + trTarih(d.bitis) + ' tarihinde sona erdi. Yenilemek için Cenk Altınay ile iletişime geç.';
       } else {
@@ -388,7 +392,7 @@
     // Yönetici ?deneme=ince ile yeni sürümü canlıya almadan dener (depo bu adları yalnız yöneticiye verir)
     if (d.yonetici && prm.get('deneme') === 'ince' && program.id === 'ahu') dosyaAdi = dosyaAdi.replace(/\.html$/, '-ince.html');
     $('lisans_baslik').textContent = 'Hoş geldin';
-    $('lisans_metin').textContent = d.bitis ? 'Lisans bitişi: ' + trTarih(d.bitis) : 'Süresiz lisans';
+    $('lisans_metin').textContent = d.bitis ? (DEMO ? 'Demo deneme · son gün: ' : 'Lisans bitişi: ') + trTarih(d.bitis) : 'Süresiz lisans';
     $('yukleniyor').hidden = false;
     perdeAc();   // program iniyor: perde şimdi iner, program hazır olunca kalkar
     // KULLANICI VERİSİ (kullanici-verisi.js): program açılmadan ÖNCE kullanıcının ad alanı hazırlanır

@@ -54,6 +54,18 @@
 <main>
   <div class="mesaj" id="mesaj" role="status"></div>
 
+  <!-- LİSANS BAŞVURULARI (23.10.2026): kullanıcının sitedeki formu → lisans_basvurulari (supabase/12-bildirim.sql);
+       her başvuru ayrıca e-postayla gelir. Lisansı aşağıdaki tablodan verirsin. -->
+  <section class="panel" id="panel_basvuru" hidden>
+    <h2>Lisans başvuruları <span class="say" id="basvuru_say"></span></h2>
+    <div class="tablo-kap">
+      <table>
+        <thead><tr><th>Tarih</th><th>Kullanıcı</th><th>Telefon</th><th>İstenen</th><th>Not</th><th></th></tr></thead>
+        <tbody id="basvuru_satirlar"></tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="panel" id="panel_lisans" hidden>
     <h2>Kullanıcılar ve lisanslar <span class="say" id="say"></span></h2>
     <div class="arac">
@@ -142,7 +154,7 @@
     $('kim').textContent = data.session.user.email;
     const { data: d, error } = await sb.rpc('lisans_durumu');
     if (error || !d || !d.yonetici) { perdeKaldir(); mesaj('Bu sayfa yalnız yöneticiler içindir.', 'hata'); return; }
-    $('panel_lisans').hidden = false; $('panel_dosya').hidden = false; $('panel_firma').hidden = false;
+    $('panel_lisans').hidden = false; $('panel_dosya').hidden = false; $('panel_firma').hidden = false; $('panel_basvuru').hidden = false;
     yukle(); dosyalariCiz();
   })();
 
@@ -156,9 +168,34 @@
     if (fh) mesaj('Firmalar okunamadı: ' + fh.message, 'hata');
     firmalar = (f || []).slice().sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
     liste = data; ciz(); firmaCiz();
+    basvurulariYukle();
     perdeKaldir(function(){ if (window.Efekt) Efekt.giris('.panel:not([hidden])'); });
   }
   $('tazele').addEventListener('click', yukle);
+
+  // --- lisans başvuruları
+  const ISTENEN = { tam: 'Pro', sade: 'Normal' };
+  async function basvurulariYukle(){
+    const { data, error } = await sb.from('lisans_basvurulari').select('*').order('olusturma', { ascending: false }).limit(200);
+    if (error) { $('basvuru_satirlar').innerHTML = '<tr><td colspan="6">Okunamadı: ' + kac(error.message) + '</td></tr>'; return; }
+    $('basvuru_say').textContent = data.length ? data.length + ' başvuru' : '';
+    $('basvuru_satirlar').innerHTML = data.length ? data.map(b =>
+      '<tr data-bid="' + b.id + '">' +
+        '<td data-e="Tarih">' + tarihSaat(b.olusturma) + '</td>' +
+        '<td data-e="Kullanıcı"><b>' + kac(b.ad || '—') + '</b><br><span class="ufak">' + kac(b.eposta) + (b.firma ? ' · ' + kac(b.firma) : '') + '</span></td>' +
+        '<td data-e="Telefon">' + (b.telefon ? '<a href="tel:' + kac(b.telefon.replace(/[^\d+]/g, '')) + '">' + kac(b.telefon) + '</a>' : '—') + '</td>' +
+        '<td data-e="İstenen">' + kac(ISTENEN[b.surum] || '—') + '</td>' +
+        '<td data-e="Not" style="white-space:pre-wrap;max-width:340px">' + kac(b.mesaj || '') + '</td>' +
+        '<td><button class="dugme ikincil kucuk sil" data-is="basvuru_sil" type="button">Sil</button></td>' +
+      '</tr>').join('') : '<tr><td colspan="6" style="color:var(--t-3)">Henüz başvuru yok.</td></tr>';
+  }
+  $('basvuru_satirlar').addEventListener('click', async e => {
+    const b = e.target.closest('[data-is=basvuru_sil]'); if (!b) return;
+    const id = b.closest('tr').dataset.bid;
+    const { error } = await sb.from('lisans_basvurulari').delete().eq('id', id);
+    if (error) return mesaj('Başvuru silinemedi: ' + error.message, 'hata');
+    basvurulariYukle();
+  });
   $('ara').addEventListener('input', ciz);
   $('suz').addEventListener('change', ciz);
 

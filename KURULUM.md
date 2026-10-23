@@ -59,6 +59,12 @@ Veritabanında rol `lisanslar.surum` alanıdır (`tam` = Pro, `sade` = Normal); 
 - **Yeni müşteri:** kendisi kayıt olur → hesabı **otomatik 7 günlük demo deneme** olarak hemen açılır
   (aktif + Demo + Pro, bitiş = kayıt + 7 gün, yalnız AHU Studio; `supabase/11-deneme.sql`). Lisans verince
   Yönetim'de *Demo*'yu kaldır, sürüm + bitiş seç → Kaydet. Süre dolan deneme girişte «Deneme süresi doldu» görür.
+- **Bildirim e-postaları** (`supabase/12-bildirim.sql` + Edge Function `bildirim`): her yeni kayıtta ve her
+  **lisans başvurusunda** yöneticiye e-posta gelir (Resend, gönderen `bildirim@cenkaltinay.com`). Lisans başvurusu:
+  demo kullanıcı sağ alttaki «Lisans başvurusu», süresi dolan girişteki «Lisans başvurusu yap» düğmesiyle form
+  doldurur; başvurular Yönetim'in en üstünde de listelenir. Ayarlar fonksiyonun gizli ayarlarında:
+  `RESEND_API_KEY`, `BILDIRIM_ALICI`, `BILDIRIM_GONDEREN`, `BILDIRIM_SIRRI` (= vault `bildirim_sirri`).
+  Gönderim sonuçları: SQL `select * from net._http_response order by created desc`.
 - **Program güncellemesi** (çekirdek sunucuda — sıra ÖNEMLİ):
   1. `SANTRAL APP`'te `_sade-uret.js` → `_sunucu-uret.js` (ince dosyalar `cevrimici/`'ye + sunucu paketi)
   2. `sunucu-esdeger-test.js` → 0 fark

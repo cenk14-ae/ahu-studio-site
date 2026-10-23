@@ -26,6 +26,15 @@
   .yukleniyor{display:flex;align-items:center;gap:10px;color:var(--t-2);font-size:13px;margin-top:18px}
   .yukleniyor i{width:16px;height:16px;border:2px solid var(--line-3);border-top-color:var(--accent);border-radius:50%;animation:don .8s linear infinite}
   @keyframes don{to{transform:rotate(360deg)}}
+  #basvuru_modal{position:fixed;inset:0;z-index:70;display:flex;padding:16px;overflow:auto;
+    background:rgba(4,6,12,.78);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  #basvuru_modal[hidden]{display:none}
+  #basvuru_modal .kart{max-width:420px;margin:auto}
+  #basvuru_modal textarea{resize:vertical}
+  .bv-ust{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .bv-ust h1{margin:0 0 4px}
+  .bv-ust button{background:none;border:0;color:var(--t-2);font-size:16px;cursor:pointer;padding:4px 8px;border-radius:6px}
+  .bv-ust button:hover{color:var(--t-1);background:var(--bg-3)}
 </style>
 </head>
 <body>
@@ -87,6 +96,7 @@
       <h1 id="lisans_baslik">Lisans</h1>
       <p class="aciklama" id="lisans_metin"></p>
       <div class="yukleniyor" id="yukleniyor" hidden><i></i><span id="yukleniyor_metin">Program yükleniyor…</span></div>
+      <button class="dugme tam" id="basvuru_ac" type="button" hidden>Lisans başvurusu yap</button>
       <button class="dugme tam ikincil" id="yenile" type="button" hidden>Tekrar dene</button>
       <p class="alt-not"><span id="kim"></span> · <button class="baglanti" id="cikis" type="button">Çıkış</button>
         <span id="yonetim_bag" hidden> · <a href="yonetim.html">Yönetim</a></span></p>
@@ -118,6 +128,31 @@
     <div class="vm-ust"><b id="vm_ad"></b><button type="button" id="vm_kapat" aria-label="Kapat">✕</button></div>
     <video id="vm_video" controls playsinline preload="none"></video>
   </div>
+</div>
+
+<!-- LİSANS BAŞVURUSU (23.10.2026) — giriş yapmış kullanıcı (demo / süresi dolmuş) başvurur; kayıt
+     lisans_basvur() ile veritabanına düşer, tetikleyici yöneticiye e-posta yollar (supabase/12-bildirim.sql) -->
+<div id="basvuru_modal" hidden role="dialog" aria-modal="true" aria-labelledby="bv_baslik">
+  <form class="kart" id="bv_form">
+    <div class="bv-ust"><h1 id="bv_baslik">Lisans başvurusu</h1><button type="button" id="bv_kapat" aria-label="Kapat">✕</button></div>
+    <p class="aciklama" id="bv_aciklama">Bilgilerini bırak, Cenk Altınay seninle iletişime geçsin. Demo hesabın bu sırada açık kalır.</p>
+    <label for="bv_ad">Ad Soyad</label>
+    <input id="bv_ad" autocomplete="name" required maxlength="120">
+    <label for="bv_firma">Firma</label>
+    <input id="bv_firma" autocomplete="organization" maxlength="160">
+    <label for="bv_tel">Telefon</label>
+    <input id="bv_tel" type="tel" autocomplete="tel" maxlength="40">
+    <label for="bv_surum">İstediğin sürüm</label>
+    <select id="bv_surum">
+      <option value="tam">Pro — AHU Studio tam sürüm</option>
+      <option value="sade">Normal — sade sürüm</option>
+      <option value="">Emin değilim</option>
+    </select>
+    <label for="bv_not">Not (isteğe bağlı)</label>
+    <textarea id="bv_not" rows="3" maxlength="2000" placeholder="Kullanıcı sayısı, ilgilendiğin programlar…"></textarea>
+    <button class="dugme tam" id="bv_gonder" type="submit">Başvuruyu gönder</button>
+    <div class="mesaj" id="bv_mesaj" role="status"></div>
+  </form>
 </div>
 
 <!-- ANA SAYFA — yalnız yönetici görür: program seçimi + yönetim -->
@@ -153,6 +188,7 @@
   <span id="menu_bulut" hidden title="Bu programdaki verin hesabına bağlı olarak bulutta saklanır; başka kullanıcılar göremez."></span>
   <a href="./" id="menu_ana" hidden>Ana sayfa</a>
   <a href="yonetim.html" id="menu_yonetim" hidden>Yönetim</a>
+  <button type="button" id="menu_basvuru" hidden>Lisans başvurusu</button>
   <button type="button" id="menu_cikis">Çıkış</button>
 </div>
 <div id="serit" hidden></div>
@@ -235,7 +271,7 @@
     $('kayit_alanlari').hidden = !kayit;
     $('baslik').textContent = kayit ? 'Hesap oluştur' : 'Giriş yap';
     // OTOMATİK DENEME (23.10.2026, supabase/11-deneme.sql): kayıt olan hesap 7 gün demo olarak hemen açılır
-    $('aciklama').textContent = kayit ? 'Kayıt ol, e-postanı doğrula: 7 gün ücretsiz demo hesabınla dene (dosya indirme kapalı).' : 'Lisanslı hesabınla devam et.';
+    $('aciklama').textContent = kayit ? 'Kayıt ol, e-postanı doğrula: 7 gün ücretsiz demo hesabınla dene (dosya indirme kapalı). Lisans başvurusunu hesabından yapabilirsin.' : 'Lisanslı hesabınla devam et.';
     $('gonder').textContent = kayit ? 'Kayıt ol' : 'Giriş yap';
     $('sifre').autocomplete = kayit ? 'new-password' : 'current-password';
     mesaj('');
@@ -327,7 +363,8 @@
   async function lisansaBakGovde(oturum){
     goster('bolum_lisans'); mesaj('');
     $('kim').textContent = oturum.user.email;
-    $('yenile').hidden = true;
+    BASVURU_UID = oturum.user.id;
+    $('yenile').hidden = true; $('basvuru_ac').hidden = true;
     $('lisans_baslik').textContent = 'Lisans kontrol ediliyor…';
     $('lisans_metin').textContent = '';
     let d;
@@ -348,6 +385,7 @@
         $('lisans_baslik').textContent = 'Onay bekleniyor';
         $('lisans_metin').textContent = 'Hesabın oluşturuldu, lisansın henüz etkinleştirilmedi. Onaylandığında bu sayfayı yenilemen yeterli.';
       }
+      $('basvuru_ac').hidden = false;
       $('yenile').hidden = false; perdeKaldir();
       return;
     }
@@ -386,6 +424,7 @@
     $('menu_ana').hidden = !(d.yonetici || izinli.length > 1);
     ANTET_AD = d.ad || '';
     DEMO = !!d.demo && !d.yonetici;
+    $('menu_basvuru').hidden = !DEMO;
     // tam lisans ?surum=sade ile sade sürümü de açabilir
     const surum = (d.surum === 'tam' && prm.get('surum') !== 'sade') ? 'tam' : 'sade';
     let dosyaAdi = program.dosyalar[surum] || program.dosyalar.tam || program.dosyalar.sade || Object.values(program.dosyalar)[0];
@@ -454,6 +493,42 @@
     }
     return r.blob();
   }
+
+  // ---------------- LİSANS BAŞVURUSU (23.10.2026) ----------------
+  // Demo / süresi dolmuş kullanıcı formu doldurur → lisans_basvur() (oturum şart, 10 dk'da bir) →
+  // tetikleyici yöneticiye e-posta yollar. Ad / firma hesaptan önceden doldurulur.
+  let BASVURU_UID = null;
+  async function basvuruAc(){
+    const m = $('basvuru_modal');
+    $('bv_mesaj').className = 'mesaj'; $('bv_gonder').disabled = false;
+    $('bv_aciklama').textContent = 'Bilgilerini bırak, Cenk Altınay seninle iletişime geçsin.' + (DEMO ? ' Demo hesabın bu sırada açık kalır.' : '');
+    m.hidden = false; $('bv_ad').focus();
+    try {
+      const [h, s] = await Promise.all([
+        sb.from('lisanslar').select('ad,firma').eq('user_id', BASVURU_UID).maybeSingle(),
+        sb.rpc('son_lisans_basvurum')]);
+      if (h.data) { if (!$('bv_ad').value) $('bv_ad').value = h.data.ad || ''; if (!$('bv_firma').value) $('bv_firma').value = h.data.firma || ''; }
+      if (s.data) bvMesaj('Son başvurun ' + new Date(s.data).toLocaleDateString('tr-TR') + ' tarihinde alındı. Yeni bilgi eklemek istersen yeniden gönderebilirsin.', 'bilgi');
+    } catch (e) {}
+  }
+  function bvMesaj(m, tur){ const e = $('bv_mesaj'); e.textContent = m; e.className = 'mesaj goster ' + tur; }
+  function basvuruKapat(){ $('basvuru_modal').hidden = true; }
+  $('basvuru_ac').addEventListener('click', basvuruAc);
+  $('menu_basvuru').addEventListener('click', basvuruAc);
+  $('bv_kapat').addEventListener('click', basvuruKapat);
+  $('basvuru_modal').addEventListener('click', e => { if (e.target === e.currentTarget) basvuruKapat(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('basvuru_modal').hidden) basvuruKapat(); });
+  $('bv_form').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    $('bv_gonder').disabled = true;
+    const { error } = await sb.rpc('lisans_basvur', { ad: $('bv_ad').value, firma: $('bv_firma').value,
+      telefon: $('bv_tel').value, surum: $('bv_surum').value, mesaj: $('bv_not').value });
+    if (error) { bvMesaj(hataMetni(error), 'hata'); $('bv_gonder').disabled = false; return; }
+    if (window.EtkinlikKaydi) EtkinlikKaydi.olay('Lisans başvurusu gönderdi');
+    bvMesaj('Başvurun alındı. Cenk Altınay en kısa sürede seninle iletişime geçecek.', 'tamam');
+    $('bv_not').value = '';
+    setTimeout(basvuruKapat, 3500);
+  });
 
   // Açıkken lisans arada bir yeniden sorulur. Süresi dolarsa ÇALIŞMA KESİLMEZ
   // (kaydedilmemiş proje kaybolmasın) — uyarı çıkar, sonraki girişte açılmaz.
@@ -556,7 +631,7 @@
       t.addEventListener('click', () => { t.style.display = 'none'; });
       document.body.appendChild(t);
     }
-    $('demo_uyari_metin').textContent = DEMO_MESAJ + ' Arayüzü dilediğiniz gibi deneyebilirsiniz.'; t.style.display = 'flex';
+    $('demo_uyari_metin').textContent = DEMO_MESAJ + ' Arayüzü dilediğiniz gibi deneyebilirsiniz. Lisans için sağ alttaki «Lisans başvurusu».'; t.style.display = 'flex';
     clearTimeout(demoSayac); demoSayac = setTimeout(() => { t.style.display = 'none'; }, 4500);
   }
   function demoKur(w){

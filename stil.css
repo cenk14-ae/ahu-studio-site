@@ -251,6 +251,7 @@ a.pkart-tik:active{transform:translateY(0) scale(.99)}
 .pkart-surum:hover,.pkart-surum:focus-visible{color:var(--t-1);border-color:var(--pr);outline:none}
 
 /* ===== TANITIM VİDEOLARI (09.10.2026) — giriş ekranında SAĞ ÜSTTE küçük kapaklar; tıklayınca ortada büyür ===== */
+#tanitim[hidden]{display:none!important}
 #tanitim{position:fixed;top:16px;right:16px;z-index:3;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 #tanitim .tn-baslik{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--t-2);opacity:.8}
 #tanitim .tn-satir{display:flex;gap:8px}

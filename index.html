@@ -26,10 +26,10 @@
   .yukleniyor{display:flex;align-items:center;gap:10px;color:var(--t-2);font-size:13px;margin-top:18px}
   .yukleniyor i{width:16px;height:16px;border:2px solid var(--line-3);border-top-color:var(--accent);border-radius:50%;animation:don .8s linear infinite}
   @keyframes don{to{transform:rotate(360deg)}}
-  #basvuru_modal{position:fixed;inset:0;z-index:70;display:flex;padding:16px;overflow:auto;
+  #basvuru_modal,#sifre_modal{position:fixed;inset:0;z-index:70;display:flex;padding:16px;overflow:auto;
     background:rgba(4,6,12,.78);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-  #basvuru_modal[hidden]{display:none}
-  #basvuru_modal .kart{max-width:420px;margin:auto}
+  #basvuru_modal[hidden],#sifre_modal[hidden]{display:none}
+  #basvuru_modal .kart,#sifre_modal .kart{max-width:420px;margin:auto}
   #basvuru_modal textarea{resize:vertical}
   .bv-ust{display:flex;align-items:center;justify-content:space-between;gap:8px}
   .bv-ust h1{margin:0 0 4px}
@@ -102,7 +102,7 @@
       <div class="yukleniyor" id="yukleniyor" hidden><i></i><span id="yukleniyor_metin">Program yükleniyor…</span></div>
       <button class="dugme tam" id="basvuru_ac" type="button" hidden>Lisans başvurusu yap</button>
       <button class="dugme tam ikincil" id="yenile" type="button" hidden>Tekrar dene</button>
-      <p class="alt-not"><span id="kim"></span> · <button class="baglanti" id="cikis" type="button">Çıkış</button>
+      <p class="alt-not"><span id="kim"></span> · <button class="baglanti" id="lisans_sifre" type="button">Şifre değiştir</button> · <button class="baglanti" id="cikis" type="button">Çıkış</button>
         <span id="yonetim_bag" hidden> · <a href="yonetim.html">Yönetim</a></span></p>
     </section>
 
@@ -169,12 +169,29 @@
   </form>
 </div>
 
+<!-- ŞİFRE DEĞİŞTİR (06.11.2026) — Cenk: «sitedeki kullanıcıların girdikten sonra şifre değiştirebilmesi için ekran
+     göremedim». Giriş yapmış kullanıcı açar (ana sayfa üstü · program menüsü · lisans ekranı); oturumla updateUser. -->
+<div id="sifre_modal" hidden role="dialog" aria-modal="true" aria-labelledby="sd_baslik">
+  <form class="kart" id="sd_form">
+    <div class="bv-ust"><h1 id="sd_baslik">Şifre değiştir</h1><button type="button" id="sd_kapat" aria-label="Kapat">✕</button></div>
+    <p class="aciklama" id="sd_kim">En az 8 karakter.</p>
+    <input type="email" id="sd_eposta" autocomplete="username" hidden>
+    <label for="sd_yeni">Yeni şifre</label>
+    <input id="sd_yeni" type="password" autocomplete="new-password" required minlength="8" maxlength="72">
+    <label for="sd_tekrar">Yeni şifre (tekrar)</label>
+    <input id="sd_tekrar" type="password" autocomplete="new-password" required minlength="8" maxlength="72">
+    <button class="dugme tam" id="sd_gonder" type="submit">Şifreyi değiştir</button>
+    <div class="mesaj" id="sd_mesaj" role="status"></div>
+  </form>
+</div>
+
 <!-- ANA SAYFA — yalnız yönetici görür: program seçimi + yönetim -->
 <div id="ana_sayfa" hidden>
   <div class="ust">
     <div class="marka"><span class="isaret"></span>ALTINAY <span class="alt">· Ana sayfa</span></div>
     <span class="bosluk"></span>
     <span class="kim" id="ana_kim"></span>
+    <button class="dugme ikincil kucuk" id="ana_sifre" type="button">Şifre değiştir</button>
     <button class="dugme ikincil kucuk" id="ana_cikis" type="button">Çıkış</button>
   </div>
   <main>
@@ -203,6 +220,7 @@
   <a href="./" id="menu_ana" hidden>Ana sayfa</a>
   <a href="yonetim.html" id="menu_yonetim" hidden>Yönetim</a>
   <button type="button" id="menu_basvuru" hidden>Lisans başvurusu</button>
+  <button type="button" id="menu_sifre">Şifre değiştir</button>
   <button type="button" id="menu_cikis">Çıkış</button>
 </div>
 <div id="serit" hidden></div>
@@ -361,6 +379,49 @@
   }
   $('cikis').addEventListener('click', cikis);
   $('menu_cikis').addEventListener('click', cikis);
+
+  // ŞİFRE DEĞİŞTİR (06.11.2026): giriş yapmış kullanıcı yeni şifresini iki kez yazar; oturumla sb.auth.updateUser.
+  // Oturum kapanmaz, öteki cihaz atılmaz. Supabase «güvenli şifre değişikliği» isterse (uzun süredir açık oturum)
+  // kullanıcıya çıkıp yeniden girmesi ya da «Şifremi unuttum» kullanması söylenir.
+  function sdMesaj(m, tur){ const e = $('sd_mesaj'); e.textContent = m || ''; e.className = 'mesaj' + (m ? ' goster ' + (tur || 'bilgi') : ''); }
+  async function sifreAc(){
+    const { data } = await sb.auth.getSession();
+    if (!data.session) { mesaj('Şifre değiştirmek için önce giriş yap.', 'hata'); return; }
+    const ep = data.session.user.email || '';
+    $('sd_eposta').value = ep;
+    $('sd_kim').textContent = (ep ? ep + ' hesabının şifresi. ' : '') + 'En az 8 karakter.';
+    $('sd_yeni').value = ''; $('sd_tekrar').value = ''; sdMesaj('');
+    $('sd_gonder').disabled = false;
+    $('sifre_modal').hidden = false; $('sd_yeni').focus();
+  }
+  function sifreKapat(){ $('sifre_modal').hidden = true; $('sd_yeni').value = ''; $('sd_tekrar').value = ''; }
+  function sdHata(e){
+    const m = (e && e.message) || String(e);
+    if (/different from the old|same_password/i.test(m)) return 'Yeni şifre eskisiyle aynı olamaz.';
+    if (/reauthenticat/i.test(m)) return 'Güvenlik için yeniden giriş gerekiyor: çıkış yapıp tekrar gir ya da giriş ekranındaki «Şifremi unuttum»u kullan.';
+    if (/weak|pwned|known to be/i.test(m)) return 'Bu şifre çok zayıf ya da sızdırılmış listelerde var. Daha güçlü bir şifre seç.';
+    return hataMetni(e);
+  }
+  ['ana_sifre', 'menu_sifre', 'lisans_sifre'].forEach(id => $(id).addEventListener('click', sifreAc));
+  $('sd_kapat').addEventListener('click', sifreKapat);
+  $('sifre_modal').addEventListener('click', e => { if (e.target === e.currentTarget) sifreKapat(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('sifre_modal').hidden) sifreKapat(); });
+  $('sd_form').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const y = $('sd_yeni').value, t = $('sd_tekrar').value;
+    if (y.length < 8) { sdMesaj('Şifre en az 8 karakter olmalı.', 'hata'); $('sd_yeni').focus(); return; }
+    if (y !== t) { sdMesaj('İki şifre aynı değil.', 'hata'); $('sd_tekrar').focus(); return; }
+    $('sd_gonder').disabled = true; sdMesaj('Kaydediliyor…');
+    try {
+      const { error } = await sb.auth.updateUser({ password: y });
+      if (error) throw error;
+      sdMesaj('Şifren değişti. Bir dahaki girişte yeni şifreni kullan.', 'tamam');
+      $('sd_yeni').value = ''; $('sd_tekrar').value = '';
+      if (window.EtkinlikKaydi) try { EtkinlikKaydi.olay('Şifre değiştirdi'); } catch (e) {}
+      setTimeout(sifreKapat, 2200);
+    } catch (e) { sdMesaj(sdHata(e), 'hata'); }
+    finally { $('sd_gonder').disabled = false; }
+  });
   $('yenile').addEventListener('click', async () => { const { data } = await sb.auth.getSession(); if (data.session) lisansaBak(data.session); });
 
   // --- lisans kontrolü ve programın yüklenmesi

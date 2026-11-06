@@ -88,6 +88,9 @@
       <form id="form_yeni">
         <label for="yeni_sifre">Yeni şifre</label>
         <input id="yeni_sifre" type="password" autocomplete="new-password" required minlength="8">
+        <!-- 06.11.2026 — Cenk: «yeni şifre belirle ekranına da tekrar kutusu ekle» -->
+        <label for="yeni_sifre2">Yeni şifre (tekrar)</label>
+        <input id="yeni_sifre2" type="password" autocomplete="new-password" required minlength="8">
         <button class="dugme tam" type="submit">Kaydet</button>
       </form>
     </section>
@@ -373,6 +376,7 @@
 
   $('form_yeni').addEventListener('submit', async ev => {
     ev.preventDefault();
+    if ($('yeni_sifre').value !== $('yeni_sifre2').value) { mesaj('İki şifre aynı değil. Yeni şifreni iki kutuya da aynı yaz.', 'hata'); $('yeni_sifre2').focus(); return; }
     const { error } = await sb.auth.updateUser({ password: $('yeni_sifre').value });
     if (error) return mesaj(hataMetni(error), 'hata');
     mesaj('Şifren değişti.', 'tamam');

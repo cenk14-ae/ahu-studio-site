@@ -70,6 +70,11 @@
         <input id="eposta" type="email" autocomplete="email" required>
         <label for="sifre">Şifre</label>
         <input id="sifre" type="password" autocomplete="current-password" required minlength="8">
+        <!-- 06.11.2026 — Cenk: «kayıt olurken de 2 kere yazsın yanlış yazma ihtimaline karşı» (yalnız Kayıt ol sekmesinde) -->
+        <div id="sifre_tekrar_alan" hidden>
+          <label for="sifre2">Şifre (tekrar)</label>
+          <input id="sifre2" type="password" autocomplete="new-password" minlength="8">
+        </div>
         <div id="captcha" class="captcha"></div>
         <button class="dugme tam" id="gonder" type="submit">Giriş yap</button>
       </form>
@@ -306,6 +311,8 @@
     $('aciklama').textContent = kayit ? 'Kayıt ol, hemen 7 gün ücretsiz demo hesabınla dene (dosya indirme kapalı). Lisans başvurusunu hesabından yapabilirsin.' : 'Lisanslı hesabınla devam et.';
     $('gonder').textContent = kayit ? 'Kayıt ol' : 'Giriş yap';
     $('sifre').autocomplete = kayit ? 'new-password' : 'current-password';
+    $('sifre_tekrar_alan').hidden = !kayit; $('sifre2').required = kayit;
+    if (!kayit) $('sifre2').value = '';
     mesaj('');
   }));
 
@@ -332,6 +339,7 @@
   $('form').addEventListener('submit', async ev => {
     ev.preventDefault();
     const eposta = $('eposta').value.trim(), sifre = $('sifre').value;
+    if (kip === 'kayit' && sifre !== $('sifre2').value) { mesaj('İki şifre aynı değil. Şifreni iki kutuya da aynı yaz.', 'hata'); $('sifre2').focus(); return; }
     $('gonder').disabled = true; mesaj('');
     try {
       const captchaTokenSu = await captchaBekle();

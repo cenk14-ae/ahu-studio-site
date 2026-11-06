@@ -26,6 +26,7 @@
   // İstek gövdesinden ne yapıldığını kestir (yalnız metin; gövde okunmaz değiştirilmez)
   function isAdi(govde) {
     var s = typeof govde === 'string' ? govde.slice(0, 400) : '';
+    if (/"islem":"light"/.test(s)) return 'Sac · profil · plastik analizi hazırlanıyor';
     if (/excel/i.test(s)) return 'Excel hazırlanıyor';
     if (/analiz/i.test(s)) return 'Malzeme analizi hesaplanıyor';
     if (/planlama/i.test(s)) return 'Planlama dosyası hazırlanıyor';

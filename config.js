@@ -19,6 +19,8 @@ window.AHU_AYAR = {
   PROGRAMLAR: [
     { id: 'ahu', renk: '#4d8dff', ad: 'AHU Studio', aciklama: 'Klima santrali panel konfigüratörü: 3B tasarım, DXF üretme, profil kesim listesi ve sac yerleşimi.',
       dosyalar: { tam: 'index.html', sade: 'index-sade.html' } },
+    // 06.11.2026 — AHU Studio Light: DXF -> Otomatik Doldur -> sac / profil / plastik Excel'i (hesap sunucuda, işlem 'light')
+    { id: 'ahulight', renk: '#36c5d6', ad: 'AHU Studio Light', aciklama: "Santral DXF'lerini yükleyin: kapaklar otomatik doldurulur, sac · profil · plastik analizi Excel olarak iner.", dosyalar: { tek: 'araclar/ahu-light.html' } },
     // Araçlarım (08.10.2026) — yalnız yönetici açar (dosya_izni bu adları vermez)
     { id: 'hesap', renk: '#8b7bff', ad: 'Hesap Merkezi', aciklama: '447 hesap, 7 araç — mekanik tesisat hesapları tek yerde.', dosyalar: { tek: 'araclar/hesap-merkezi.html' } },
     // 20.10.2026 — Hesap Merkezi'ndeki Otopark Projelendirme modülü kendi programına ayrıldı

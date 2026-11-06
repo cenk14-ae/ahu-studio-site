@@ -102,3 +102,9 @@ on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
 insert into public.programlar (id, ad, dosyalar) values
   ('otoproje', 'Otopark Projelendirme', '{araclar/otopark-projelendirme.html}')
 on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
+
+-- 11) 06.11.2026 — AHU Studio Light: DXF -> Otomatik Doldur -> sac / profil / plastik Excel'i (hesap sunucuda,
+--     cekirdek işlemi 'light'; sunucu ayrıca 'ahulight' ya da 'ahu' program iznini ister)
+insert into public.programlar (id, ad, dosyalar) values
+  ('ahulight', 'AHU Studio Light', '{araclar/ahu-light.html}')
+on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;

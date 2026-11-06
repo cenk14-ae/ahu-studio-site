@@ -308,7 +308,9 @@
     $('kayit_alanlari').hidden = !kayit;
     $('baslik').textContent = kayit ? 'Hesap oluştur' : 'Giriş yap';
     // OTOMATİK DENEME (23.10.2026, supabase/11-deneme.sql): kayıt olan hesap 7 gün demo olarak hemen açılır
-    $('aciklama').textContent = kayit ? 'Kayıt ol, hemen 7 gün ücretsiz demo hesabınla dene (dosya indirme kapalı). Lisans başvurusunu hesabından yapabilirsin.' : 'Lisanslı hesabınla devam et.';
+    // 06.11.2026 — Cenk: «hesap oluşturma kısmındaki açıklamayı kaldır» → Kayıt ol sekmesinde açıklama satırı gizli
+    $('aciklama').textContent = kayit ? '' : 'Lisanslı hesabınla devam et.';
+    $('aciklama').hidden = kayit;
     $('gonder').textContent = kayit ? 'Kayıt ol' : 'Giriş yap';
     $('sifre').autocomplete = kayit ? 'new-password' : 'current-password';
     $('sifre_tekrar_alan').hidden = !kayit; $('sifre2').required = kayit;

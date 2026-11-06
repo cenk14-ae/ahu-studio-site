@@ -351,7 +351,8 @@
   window.addEventListener('online', function () { if (D && metaOku().kirli) yukle(); });
 
   window.KullaniciVerisi = {
-    KAPSAM_DISI: ['ahu'],
+    // ahulight (06.11.2026): veri saklamaz; sunucu isteği Supabase belirtecini localStorage'dan okur (ad alanı gizlerdi)
+    KAPSAM_DISI: ['ahu', 'ahulight'],
     hazirla: hazirla, gom: gom, simdiYaz: simdiYaz,
     // testler ve yönetim için
     _goruntuAl: goruntuAl, _durum: function () { return D ? { ns: D.ns, meta: metaOku(), yukleniyor: yukleniyor, bekliyor: !!bekleyen } : null; }

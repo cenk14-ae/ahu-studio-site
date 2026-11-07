@@ -39,6 +39,19 @@
   .bv-kod-satir{display:flex;gap:8px}
   .bv-kod-satir input{flex:1;min-width:0;letter-spacing:3px}
   .bv-kod-satir .dugme{white-space:nowrap}
+  /* G-0017: doğrulanmamış e-posta uyarı kutusu (sarı, belirgin). Burada (stil.css değil): stil.css?v= önbelleği bayatken
+     yeni index'in kutusu biçimsiz kalmasın. */
+  .dogrulama-kutusu{margin-top:16px;padding:12px 14px;border-radius:var(--r);background:rgba(240,180,69,.13);
+    border:1px solid rgba(240,180,69,.55);border-left:4px solid var(--warn);color:var(--t-1);font-size:13px;line-height:1.5;
+    overflow-wrap:anywhere}
+  .dogrulama-kutusu[hidden]{display:none}
+  .dogrulama-kutusu .dk-baslik{color:var(--warn);font-weight:600;font-size:14.5px;margin-bottom:4px}
+  .dogrulama-kutusu .dk-metin{margin-bottom:6px}
+  .dogrulama-kutusu .dk-adimlar{margin:0 0 0 18px;color:var(--t-2)}
+  .dogrulama-kutusu .dk-adimlar li{margin-top:2px}
+  .dogrulama-kutusu .dk-dugme{margin-top:12px;background:var(--warn);color:#1b1404;white-space:normal;
+    box-shadow:0 2px 10px -3px rgba(240,180,69,.6)}
+  .dogrulama-kutusu .dk-dugme:hover{box-shadow:0 7px 20px -7px rgba(240,180,69,.6)}
 </style>
 </head>
 <body>
@@ -81,8 +94,7 @@
         <div id="captcha" class="captcha"></div>
         <button class="dugme tam" id="gonder" type="submit">Giriş yap</button>
       </form>
-      <!-- G-0014 §1.3: doğrulama e-postasını yeniden gönder (kayıttan sonra, «Email not confirmed» hatasında, süresi dolmuş bağlantıda görünür) -->
-      <p class="alt-not"><button class="baglanti" id="unuttum" type="button">Şifremi unuttum</button><button class="baglanti" id="dogrulama_yeniden" type="button" hidden style="margin-left:14px">Doğrulama e-postasını yeniden gönder</button></p>
+      <p class="alt-not"><button class="baglanti" id="unuttum" type="button">Şifremi unuttum</button></p>
     </section>
 
     <!-- İKİ ADIMLI DOĞRULAMA (G-0014 §4): yalnız doğrulanmış TOTP faktörü olan hesap görür (aal1 → aal2).
@@ -132,6 +144,22 @@
     </section>
 
     <div class="mesaj" id="mesaj" role="status"></div>
+    <!-- G-0017 (07.11.2026, Cenk: «doğrulama yapmayanların ekranında uyarı çıksın»): belirgin sarı uyarı kutusu.
+         Görünür: kayıttan hemen sonra, «Email not confirmed» girişinde, süresi dolmuş / geçersiz doğrulama bağlantısıyla dönüşte.
+         Gizlenir: başarılı girişte ve sekme değişiminde. Ekranda doğrulama bağlantısı VERİLMEZ (doğrulama yalnız e-postadaki
+         bağlantıyla olur — sahiplik kanıtı). Metinler JS'te textContent ile basılır. Adım 2'deki bağlantı adı Auth e-posta
+         şablonundaki metinle aynı (20261106-kayit-onay/uygula.mjs TR_SABLON: «E-posta adresimi doğrula»). -->
+    <div class="dogrulama-kutusu" id="dogrulama_kutusu" role="status" aria-live="polite" hidden>
+      <p class="dk-baslik" id="dogrulama_baslik">E-posta adresini doğrula</p>
+      <p class="dk-metin" id="dogrulama_metin"></p>
+      <ol class="dk-adimlar" id="dogrulama_adimlar">
+        <li>Gelen kutunu aç; e-posta orada değilse gereksiz (spam) klasörüne de bak.</li>
+        <li>E-postadaki «E-posta adresimi doğrula» bağlantısına tıkla.</li>
+        <li>Hesabın Cenk Altınay onaylayınca açılır.</li>
+      </ol>
+      <!-- G-0014 §1.3: doğrulama e-postasını yeniden gönder — id ve olay aynı; G-0017'de kutunun içine taşındı -->
+      <button class="dugme tam dk-dugme" id="dogrulama_yeniden" type="button" hidden>Doğrulama e-postasını yeniden gönder</button>
+    </div>
     <!-- İLETİŞİM (09.10.2026) — adres sayfa kaynağında düz yazılmaz (e-posta toplayan botlar), JS birleştirir -->
     <p class="iletisim">İletişim: <a id="iletisim_posta" href="#">—</a></p>
   </div>
@@ -308,6 +336,8 @@
   function mesaj(m, tur){ const e = $('mesaj'); e.textContent = m || ''; e.className = 'mesaj' + (m ? ' goster ' + (tur||'bilgi') : ''); }
   function goster(bolum){
     ['bolum_form','bolum_yeni','bolum_lisans','bolum_acik','bolum_mfa'].forEach(b => $(b).hidden = (b !== bolum));
+    // G-0017: uyarı kutusu bölümlerin dışında (#mesaj altında) — giriş formundan çıkılınca gizlenir
+    if (bolum !== 'bolum_form') dogrulamaKutusu(false);
     // Program açılırken perde vardı ve hata/uyarı çıktıysa perde kalksın (giriş ekranında perde yok)
     if (bolum !== 'bolum_lisans') perdeKaldir();
   }
@@ -333,6 +363,24 @@
   }
   // «Email not confirmed» → supabase-js hata kodu email_not_confirmed (Auth: doğrulanmamış hesap giriş yapamaz)
   const dogrulanmadiMi = e => /Email not confirmed/i.test((e && e.message) || '') || (e && e.code) === 'email_not_confirmed';
+  // G-0017: doğrulama uyarı kutusu. E-posta maskeli gösterilir (ilk iki harf + ••• + @alan adı); adres bilinmiyorsa
+  // (doğrulama bağlantısından hatalı dönüş) adresi yazıp yeniden istemesi söylenir. Yalnız textContent — HTML yorumlanmaz.
+  function maskeliEposta(e){
+    e = String(e || '').trim();
+    const i = e.lastIndexOf('@');
+    if (i < 1 || i === e.length - 1) return '';
+    const yerel = e.slice(0, i);
+    return yerel.slice(0, Math.max(1, Math.min(2, yerel.length - 1))) + '•••' + e.slice(i);
+  }
+  function dogrulamaKutusu(goster, eposta){
+    $('dogrulama_kutusu').hidden = !goster;
+    $('dogrulama_yeniden').hidden = !goster;
+    if (!goster) return;
+    const m = maskeliEposta(eposta);
+    $('dogrulama_metin').textContent = m
+      ? m + ' adresine doğrulama bağlantısı gönderdik.'
+      : 'Kayıt olduğun e-posta adresini yukarıdaki kutuya yaz ve aşağıdaki düğmeyle yeni doğrulama bağlantısı iste.';
+  }
   // G-0014 S7 (CWE-209; OWASP Error Handling Cheat Sheet): tanınmayan sunucu iletisi kullanıcıya HAM gösterilmez —
   // genel Türkçe ileti gösterilir, ayrıntı yalnız konsola yazılır (console.warn). Geçen kendi iletilerimiz:
   // trHata() ile atılanlar ve SQL fonksiyonlarımızın `raise exception` iletileri (PostgreSQL SQLSTATE P0001, Türkçe).
@@ -382,6 +430,7 @@
     $('sifre_tekrar_alan').hidden = !kayit; $('sifre2').required = kayit;
     if (!kayit) $('sifre2').value = '';
     mesaj('');
+    dogrulamaKutusu(false);   // G-0017: sekme değişiminde uyarı kutusu gizlenir
   }));
 
   // ROBOT KORUMASI (Cloudflare Turnstile, Managed): giriş / kayıt / şifre sıfırlama bir doğrulama belirteci
@@ -426,17 +475,18 @@
           mesaj('Kayıt alındı. ' + eposta + ' adresine doğrulama bağlantısı gönderdik. Bağlantıya tıklayarak adresini doğrula; ' +
             'hesabın Cenk Altınay onayladığında açılır ve 7 günlük demo o gün başlar. E-posta gelmediyse gereksiz klasörüne bak ' +
             'ya da aşağıdan yeniden gönder. Hesabın zaten varsa giriş yap ya da «Şifremi unuttum»u kullan.', 'tamam');
-          $('dogrulama_yeniden').hidden = false;
+          dogrulamaKutusu(true, eposta);   // G-0017 durum 1: kayıttan hemen sonra
         }
       } else {
         const { data, error } = await sb.auth.signInWithPassword({ email: eposta, password: sifre, options: { captchaToken: captchaTokenSu } });
         if (error) throw error;
+        dogrulamaKutusu(false);   // G-0017: başarılı girişte gizlenir
         // §1.6: eski şifre yeni kurala uymuyorsa Supabase girişte weakPassword döndürür — giriş sürer, yalnız bilgi verilir
         if (data && data.weakPassword) ZAYIF_SIFRE = true;
       }
     } catch (e) {
       mesaj(hataMetni(e), 'hata');
-      if (dogrulanmadiMi(e)) $('dogrulama_yeniden').hidden = false;
+      if (dogrulanmadiMi(e)) dogrulamaKutusu(true, eposta);   // G-0017 durum 2: «Email not confirmed» ile giriş
     }
     finally { $('gonder').disabled = false; captchaYenile(); }
   });
@@ -452,6 +502,7 @@
       const { error } = await sb.auth.resend({ type: 'signup', email, options: { emailRedirectTo: location.origin + location.pathname, captchaToken: tk } });
       if (error) throw error;
       mesaj('Doğrulama bağlantısı yeniden gönderildi. Gelen kutunu (ve gereksiz klasörünü) kontrol et.', 'tamam');
+      dogrulamaKutusu(true, email);   // G-0017: kutudaki adres satırı gönderilen adrese güncellenir
     } catch (e) { mesaj(hataMetni(e), 'hata'); }
     finally { b.disabled = false; captchaYenile(); }
   });
@@ -1183,6 +1234,7 @@
 
   sb.auth.onAuthStateChange((olay, oturum) => {
     if (olay === 'PASSWORD_RECOVERY') { goster('bolum_yeni'); return; }
+    if (olay === 'SIGNED_IN' && oturum) dogrulamaKutusu(false);   // G-0017: oturum açıldı → uyarı kutusu gizlenir
     if (olay === 'SIGNED_IN' && oturum && !acik && $('bolum_yeni').hidden) setTimeout(() => lisansaBak(oturum), 0);
     if (olay === 'SIGNED_OUT') { acik = false; }
   });
@@ -1194,7 +1246,7 @@
       mesaj(donusHatasi === 'otp_expired'
         ? 'Doğrulama bağlantısının süresi dolmuş ya da daha önce kullanılmış. E-posta adresini yazıp yeniden gönder. (Şifre sıfırlama bağlantısıysa «Şifremi unuttum» ile yenisini iste.)'
         : 'Bağlantı geçersiz. Yeniden gönder ya da giriş yap.', 'hata');
-      $('dogrulama_yeniden').hidden = false;
+      dogrulamaKutusu(true, null);   // G-0017 durum 3: süresi dolmuş / geçersiz bağlantıyla dönüş (adres bilinmez)
     }
     if (donusHatasi) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
     if (data.session && !acik && $('bolum_yeni').hidden) lisansaBak(data.session);

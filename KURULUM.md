@@ -22,7 +22,9 @@ geçerli lisansı olana verir (sade lisans → sade dosya, tam lisans → ikisi)
 3. **Project Settings → API**: `Project URL` ve `anon public` anahtarını `config.js`'e yaz.
 4. **Authentication → URL Configuration**: *Site URL* = `https://cenkaltinay.com`,
    *Redirect URLs*'e `https://cenkaltinay.com/**` ekle (doğrulama ve şifre sıfırlama e-postaları buraya döner).
-5. **Authentication → Sign In / Providers → Email**: açık; *Confirm email* açık kalsın.
+5. **Authentication → Sign In / Providers → Email**: açık; *Confirm email* AÇIK (G-0015, 06.11.2026): kayıt olan
+   e-postasını doğrulamadan giremez. Doğrulama e-postası Türkçe (konu «AHU Studio — e-posta adresini doğrula»),
+   bağlantı Site URL'ye (cenkaltinay.com) döner; Redirect URLs yalnız `https://cenkaltinay.com/**` ve `https://www.cenkaltinay.com/**`.
 
 ## 2. GitHub Pages
 1. Bu klasör bir depo olarak yüklenir (`ahu-studio-site`), **Settings → Pages** → *Deploy from branch* → `main` / `/ (root)`.
@@ -56,19 +58,28 @@ Natro'nun kendi park/yönlendirme A kayıtları varsa silinir. Yayılması 10 dk
 Veritabanında rol `lisanslar.surum` alanıdır (`tam` = Pro, `sade` = Normal); izin depo kuralında (`dosya_izni`) uygulanır.
 
 ## Günlük kullanım
-- **Yeni müşteri:** kendisi kayıt olur → hesabı **otomatik 7 günlük demo deneme** olarak hemen açılır
-  (aktif + Demo + Pro, bitiş = kayıt + 7 gün, yalnız AHU Studio; `supabase/11-deneme.sql`). Lisans verince
-  Yönetim'de *Demo*'yu kaldır, sürüm + bitiş seç → Kaydet. Süre dolan deneme girişte «Deneme süresi doldu» görür.
-- **Bildirim e-postaları** (`supabase/12-bildirim.sql` + Edge Function `bildirim`): her yeni kayıtta ve her
-  **lisans başvurusunda** yöneticiye e-posta gelir (Resend, gönderen `bildirim@cenkaltinay.com`). Lisans başvurusu:
+- **Yeni müşteri** (06.11.2026'dan beri, G-0015): kendisi kayıt olur → e-postasındaki bağlantıyla adresini doğrular
+  (doğrulamadan giremez; gelmezse giriş ekranındaki «Doğrulama e-postasını yeniden gönder») → hesap **onay bekler**
+  (pasif; girişte «Onay bekleniyor» görür) → Cenk Yönetim'de «Aktif»i işaretleyip Kaydet'e basar → **7 günlük demo o gün
+  başlar** (Demo + Pro, bitiş = onay günü + 7, yalnız AHU Studio; tetikleyici `lisans_onay_demo`, `supabase/14-kayit-onayi.sql`).
+  Kullanıcı tablosunda e-postanın yanında «✓ doğrulandı» / «doğrulanmadı» görünür: doğrulamamış birini Aktif yapsan bile
+  bağlantıya tıklayana kadar giremez. Lisans verince Yönetim'de *Demo*'yu kaldır, sürüm + bitiş seç → Kaydet.
+  Süre dolan deneme girişte «Deneme süresi doldu» görür. (Eski «kayıt olan hemen 7 gün demo» akışı, `11-deneme.sql`, kalktı.)
+- **Bildirim e-postaları** (`supabase/12-bildirim.sql` + Edge Function `bildirim`): her yeni kayıtta (kayıt anında,
+  e-posta doğrulanmadan önce — hesap «Onay bekliyor» olarak gelir) ve her
+  **lisans başvurusunda** yöneticiye e-posta gelir (Resend, gönderen `bildirim@cenkaltinay.com`). Kullanıcının e-postasını
+  doğrulayıp doğrulamadığı Yönetim'deki kullanıcı tablosunda görünür. Lisans başvurusu:
   demo kullanıcı sağ alttaki «Lisans başvurusu», süresi dolan girişteki «Lisans başvurusu yap» düğmesiyle form
   doldurur; başvurular Yönetim'in en üstünde de listelenir. Ayarlar fonksiyonun gizli ayarlarında:
   `RESEND_API_KEY`, `BILDIRIM_ALICI`, `BILDIRIM_GONDEREN`, `BILDIRIM_SIRRI` (= vault `bildirim_sirri`).
   Gönderim sonuçları: SQL `select * from net._http_response order by created desc`.
-- **E-posta doğrulaması** (`supabase/13-eposta-dogrulama.sql`, 23.10.2026): Auth'ta *Confirm email* KAPALI —
-  kayıt olan hemen demoya girer. Doğrulama yalnız **lisans başvurusunda**: «Kod gönder» → kullanıcının adresine
-  6 haneli kod (15 dk, 5 deneme, dakikada 1 / saatte 5) → doğru kodla `lisanslar.eposta_dogrulandi` dolar.
-  Auth e-postaları (şifre sıfırlama) Resend SMTP ile `noreply@cenkaltinay.com`'dan gider.
+- **E-posta doğrulaması** (06.11.2026, G-0015 + G-0014): Auth'ta *Confirm email* AÇIK — kayıt olan e-postasını
+  doğrulamadan giremez. Kanıt `lisanslar.eposta_dogrulandi`: kullanıcı doğrulama bağlantısına tıklayınca dolar
+  (`supabase/17-kayit-dogrulama-ve-eposta-kodu.sql`, tetikleyici `kullanici_dogrulandi`; gönderilmiş bir doğrulama
+  e-postası şart, auto-confirm doğrulama sayılmaz). Lisans başvurusundaki **6 haneli kod** (`13-eposta-dogrulama.sql`)
+  yalnız 23.10–06.11 arasında doğrulamasız açılmış eski hesaplar için kalır: «Kod gönder» → 15 dk geçerli, 5 deneme,
+  dakikada 1 / saatte 5 / **günde en çok 10** kod, e-postada ad yok. Auth e-postaları (doğrulama, şifre sıfırlama)
+  Resend SMTP ile `noreply@cenkaltinay.com`'dan gider.
 - **Program güncellemesi** (çekirdek sunucuda — sıra ÖNEMLİ):
   1. `SANTRAL APP`'te `_sade-uret.js` → `_sunucu-uret.js` (ince dosyalar `cevrimici/`'ye + sunucu paketi)
   2. `sunucu-esdeger-test.js` → 0 fark
@@ -82,6 +93,35 @@ Veritabanında rol `lisanslar.surum` alanıdır (`tam` = Pro, `sade` = Normal); 
   çevrimdışı kullanabilir. Bu sistem **lisanssız erişimi** engeller, lisanslı kullanıcının kopyalamasını değil.
 - Aynı hesabın birden çok cihazda kullanılması şu an sınırlanmıyor (ileride eklenebilir).
 - Tam sürümdeki şifre kapısı (`#giris`) yerinde kalır — tam sürüm için ikinci bir kilit.
+
+## Güvenlik sınırları (G-0014, 06.11.2026)
+Veritabanı kayıtları `supabase/15…19` (taslaklar ve geri alma dosyaları: `.ajan/isler/20261106-supabase-uygula/taslak/`).
+- **Kütüphane kotası** (`16-kutuphane-cop-kota.sql`): kütüphane (kişisel ya da firma) başına en çok **1000 kayıt / 300 klasör**;
+  yönetici muaf. Dolunca kullanıcıya «Kütüphane dolu…» iletisi döner.
+- **Çöp damgası sunucuda** (aynı dosya): çöpe atma zamanını istemci belirleyemez (geçmiş tarihle kalıcı silme atlatılamaz);
+  kalıcı silme yalnız 30 gün sonra ya da yönetici.
+- **Etkinlik kaydı sınırı** (`18-etkinlik-siniri.sql`): kullanıcı başına saatte **100 ziyaret / 3000 olay**; olay zamanı en çok
+  10 dk geriye yazılabilir.
+- **Yönetici notu kullanıcıya görünmez** (`19-lisans-notlari.sql`): `authenticated` rolü `lisanslar.notlar` sütununu okuyamaz;
+  Yönetim notları `yonetici_lisans_notlari()` RPC'siyle okur (yalnız yönetici satır alır). Yönetim'de notlar okunamazsa not
+  kutusu kapanır ve Kaydet notlara dokunmaz.
+- **Yetkiler** (`15-yetki-sikilastirma.sql`): `anon` ve `authenticated` rollerinde TRUNCATE / REFERENCES / TRIGGER / MAINTAIN yok
+  (varsayılan yetkilerde de). Yeni tablo açarken yalnız gereken yetkileri (SELECT/INSERT/UPDATE/DELETE) ver.
+- **Kayıt** (`17-kayit-dogrulama-ve-eposta-kodu.sql`): ad 120, firma 160 karaktere kırpılır; e-posta doğrulaması yukarıda.
+- **Kullanıcı silme** Edge Function `kullanici-sil` ile (`supabase/functions/kullanici-sil/index.ts`): hesap `kullanici_sil`
+  kurallarıyla silinir (yönetici ve kendi hesabın silinemez), ardından bulut program verisi (`kullanici-verisi/<uid>/`)
+  Storage API ile silinir. Yayın: `npx supabase functions deploy kullanici-sil --project-ref eqekvkfbysjzueywfiya --use-api`
+  (**verify_jwt açık** — `--no-verify-jwt` KULLANMA).
+- **Yönetici iki adımlı doğrulama (TOTP):** Yönetim → *İki adımlı doğrulama* → Başlat → QR'ı doğrulama uygulamasıyla tara,
+  gizli anahtarı güvenli yere yaz → 6 haneli kod → Doğrula. Faktörü olan hesaba girişte şifreden sonra kod sorulur.
+  Taslak 05 (`yonetici_mi` için aal2 şartı) uygulanınca kayıt `supabase/20-yonetici-mfa.sql` olarak eklenir; o zamandan
+  sonra kodsuz (aal1) oturum Yönetim'e giremez. Telefon kaybolur ve yedek anahtar yoksa: SQL Editor'da taslak 05'in
+  `.geri.sql`'ini çalıştır (SQL Editor MFA istemez), Authentication → Users → hesabın → Factors'tan eski faktörü sil.
+- **Şifre kuralı:** site yeni şifrelerde (kayıt, şifre sıfırlama, Şifre değiştir) en az 10 karakter, küçük + büyük harf + rakam
+  ister (tarayıcıda denetlenir; girişte eski şifreler geçer). Sunucu tarafı Supabase panel ayarıdır (`uygula.mjs --panel`, ayrı onay):
+  uygulanınca aynı kural sunucuda da zorunlu olur, şifre değişiminde yeniden doğrulama açılır ve eski şifreyle giren kullanıcıya
+  site «Şifren yeni kurallara uymuyor» bilgisini verir (giriş sürer).
+- **Data API → Exposed schemas** listesine `net` ya da `vault` **EKLENMEZ** (yalnız `public` ve `graphql_public`).
 
 ## Kullanıcı verisi (08.10.2026)
 Programlar (blob iframe) sitenin kökeninde çalıştığı için localStorage/IndexedDB **bütün kullanıcılar

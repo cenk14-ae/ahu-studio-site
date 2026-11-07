@@ -60,37 +60,54 @@
         <button type="button" data-kip="kayit">Kayıt ol</button>
       </div>
       <form id="form" autocomplete="on">
+        <!-- G-0014 S10: maxlength — ad 120 / firma 160 sunucudaki kırpmayla aynı (17-kayit-dogrulama-ve-eposta-kodu.sql);
+             e-posta 254 (RFC 5321 yol sınırı); şifre 72 (Supabase Auth / bcrypt üst sınırı) -->
         <div id="kayit_alanlari" hidden>
           <label for="ad">Ad Soyad</label>
-          <input id="ad" autocomplete="name">
+          <input id="ad" autocomplete="name" maxlength="120">
           <label for="firma">Firma</label>
-          <input id="firma" autocomplete="organization">
+          <input id="firma" autocomplete="organization" maxlength="160">
         </div>
         <label for="eposta">E-posta</label>
-        <input id="eposta" type="email" autocomplete="email" required>
+        <input id="eposta" type="email" autocomplete="email" required maxlength="254">
         <label for="sifre">Şifre</label>
-        <input id="sifre" type="password" autocomplete="current-password" required minlength="8">
+        <!-- minlength: Giriş sekmesinde 8 (eski şifreli hesaplar girebilsin), Kayıt ol sekmesinde JS 10 yapar (G-0014 §1.6) -->
+        <input id="sifre" type="password" autocomplete="current-password" required minlength="8" maxlength="72">
         <!-- 06.11.2026 — Cenk: «kayıt olurken de 2 kere yazsın yanlış yazma ihtimaline karşı» (yalnız Kayıt ol sekmesinde) -->
         <div id="sifre_tekrar_alan" hidden>
           <label for="sifre2">Şifre (tekrar)</label>
-          <input id="sifre2" type="password" autocomplete="new-password" minlength="8">
+          <input id="sifre2" type="password" autocomplete="new-password" minlength="10" maxlength="72">
         </div>
         <div id="captcha" class="captcha"></div>
         <button class="dugme tam" id="gonder" type="submit">Giriş yap</button>
       </form>
-      <p class="alt-not"><button class="baglanti" id="unuttum" type="button">Şifremi unuttum</button></p>
+      <!-- G-0014 §1.3: doğrulama e-postasını yeniden gönder (kayıttan sonra, «Email not confirmed» hatasında, süresi dolmuş bağlantıda görünür) -->
+      <p class="alt-not"><button class="baglanti" id="unuttum" type="button">Şifremi unuttum</button><button class="baglanti" id="dogrulama_yeniden" type="button" hidden style="margin-left:14px">Doğrulama e-postasını yeniden gönder</button></p>
+    </section>
+
+    <!-- İKİ ADIMLI DOĞRULAMA (G-0014 §4): yalnız doğrulanmış TOTP faktörü olan hesap görür (aal1 → aal2).
+         Kaynak: https://supabase.com/docs/guides/auth/auth-mfa/totp -->
+    <section id="bolum_mfa" hidden>
+      <h1>İki adımlı doğrulama</h1>
+      <p class="aciklama">Doğrulama uygulamandaki 6 haneli kodu yaz.</p>
+      <form id="form_mfa">
+        <label for="mfa_kod">Doğrulama kodu</label>
+        <input id="mfa_kod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" required placeholder="6 haneli kod">
+        <button class="dugme tam" id="mfa_gonder" type="submit">Doğrula</button>
+      </form>
+      <p class="alt-not"><button class="baglanti" id="mfa_cikis" type="button">Çıkış</button></p>
     </section>
 
     <!-- YENİ ŞİFRE (e-postadaki bağlantıdan gelince) -->
     <section id="bolum_yeni" hidden>
       <h1>Yeni şifre belirle</h1>
-      <p class="aciklama">En az 8 karakter.</p>
+      <p class="aciklama">En az 10 karakter; büyük harf, küçük harf ve rakam içermeli (İngilizce harflerle: A–Z, a–z; Ç, Ş, İ gibi harfler sayılmaz).</p>
       <form id="form_yeni">
         <label for="yeni_sifre">Yeni şifre</label>
-        <input id="yeni_sifre" type="password" autocomplete="new-password" required minlength="8">
+        <input id="yeni_sifre" type="password" autocomplete="new-password" required minlength="10" maxlength="72">
         <!-- 06.11.2026 — Cenk: «yeni şifre belirle ekranına da tekrar kutusu ekle» -->
         <label for="yeni_sifre2">Yeni şifre (tekrar)</label>
-        <input id="yeni_sifre2" type="password" autocomplete="new-password" required minlength="8">
+        <input id="yeni_sifre2" type="password" autocomplete="new-password" required minlength="10" maxlength="72">
         <button class="dugme tam" type="submit">Kaydet</button>
       </form>
     </section>
@@ -163,7 +180,7 @@
     </select>
     <label for="bv_not">Not (isteğe bağlı)</label>
     <textarea id="bv_not" rows="3" maxlength="2000" placeholder="Kullanıcı sayısı, ilgilendiğin programlar…"></textarea>
-    <!-- E-POSTA DOĞRULAMASI (13-eposta-dogrulama.sql): demo doğrulamasız açılır, lisans başvurusu kod ister -->
+    <!-- E-POSTA DOĞRULAMASI (13-eposta-dogrulama.sql): yalnız 23.10–06.11 arasında doğrulamasız açılmış hesaplar kod ister -->
     <div id="bv_dogrula" hidden>
       <label for="bv_kod">E-posta doğrulama kodu</label>
       <p class="bv-not" id="bv_dogrula_metin"></p>
@@ -182,12 +199,12 @@
 <div id="sifre_modal" hidden role="dialog" aria-modal="true" aria-labelledby="sd_baslik">
   <form class="kart" id="sd_form">
     <div class="bv-ust"><h1 id="sd_baslik">Şifre değiştir</h1><button type="button" id="sd_kapat" aria-label="Kapat">✕</button></div>
-    <p class="aciklama" id="sd_kim">En az 8 karakter.</p>
+    <p class="aciklama" id="sd_kim">En az 10 karakter; büyük harf, küçük harf ve rakam içermeli (İngilizce harflerle: A–Z, a–z; Ç, Ş, İ gibi harfler sayılmaz).</p>
     <input type="email" id="sd_eposta" autocomplete="username" hidden>
     <label for="sd_yeni">Yeni şifre</label>
-    <input id="sd_yeni" type="password" autocomplete="new-password" required minlength="8" maxlength="72">
+    <input id="sd_yeni" type="password" autocomplete="new-password" required minlength="10" maxlength="72">
     <label for="sd_tekrar">Yeni şifre (tekrar)</label>
-    <input id="sd_tekrar" type="password" autocomplete="new-password" required minlength="8" maxlength="72">
+    <input id="sd_tekrar" type="password" autocomplete="new-password" required minlength="10" maxlength="72">
     <button class="dugme tam" id="sd_gonder" type="submit">Şifreyi değiştir</button>
     <div class="mesaj" id="sd_mesaj" role="status"></div>
   </form>
@@ -245,7 +262,9 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- G-0014 S3/B4: supabase-js sürümü sabit + SRI. Özet: https://data.jsdelivr.com/v1/packages/npm/@supabase/supabase-js@2.119.0?structure=flat
+     (/dist/umd/supabase.js «hash») ve indirilen dosyanın SHA-256'sı, 07.11.2026'da ikisi de doğrulandı. Sürüm yükseltilirse özet de değişmeli. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js" integrity="sha256-qGftvPsCk3Cu7HIj3WGAtWC2IfvjvGTGWE+wNp0be84=" crossorigin="anonymous"></script>
 <script src="config.js?v=20261106a"></script>
 <script src="oturum-kapisi.js"></script>
 <script src="ikonlar.js?v=20261020a"></script>
@@ -266,6 +285,12 @@
     $('form').querySelectorAll('input,button').forEach(e => e.disabled = true);
     return;
   }
+  // DOĞRULAMA BAĞLANTISINDAN DÖNÜŞ (G-0014 §1.5) — adres createClient'tan ÖNCE okunur (supabase-js adresi sonra temizler).
+  // Başarılı dönüş: #access_token=…&type=signup → oturum kurulur, karşılama metnine «E-posta adresin doğrulandı.» eklenir.
+  // Hatalı dönüş: #error=…&error_code=otp_expired… → yalnız error_code sabit Türkçe metinle eşlenir; error_description basılmaz.
+  const ADRES_HASH = new URLSearchParams(location.hash.replace(/^#/, ''));
+  const dogrulamaDonusu = ADRES_HASH.get('type') === 'signup' && ADRES_HASH.has('access_token');
+  const donusHatasi = ADRES_HASH.has('error') || ADRES_HASH.has('error_code') ? (ADRES_HASH.get('error_code') || 'hata') : null;
   const sb = window.supabase.createClient(A.SUPABASE_URL, A.SUPABASE_ANON_KEY);
   // AÇILIŞ PERDESİ (efekt.js) YALNIZ PROGRAM AÇILIRKEN: program arkada hazırlanır, perde ancak program
   // tamamen hazır olunca kalkar ('önce içerik, sonra animasyon, sonra yine içerik' olmasın).
@@ -278,11 +303,11 @@
     (function emniyet(g, s){ const n = Date.now(); if (!document.hidden) g += n - s; if (g > 15000) perdeKaldir(); else if (!perdeKalkti) setTimeout(function(){ emniyet(g, n); }, 500); })(0, Date.now());
   }
   function perdeKaldir(cb){ if (!PERDE || perdeKalkti) { if (cb) cb(); return; } perdeKalkti = true; PERDE.bitir(cb); }
-  let kip = 'giris', acik = false, sayac = null, kontrolde = false;
+  let kip = 'giris', acik = false, sayac = null, kontrolde = false, ZAYIF_SIFRE = false;
 
   function mesaj(m, tur){ const e = $('mesaj'); e.textContent = m || ''; e.className = 'mesaj' + (m ? ' goster ' + (tur||'bilgi') : ''); }
   function goster(bolum){
-    ['bolum_form','bolum_yeni','bolum_lisans','bolum_acik'].forEach(b => $(b).hidden = (b !== bolum));
+    ['bolum_form','bolum_yeni','bolum_lisans','bolum_acik','bolum_mfa'].forEach(b => $(b).hidden = (b !== bolum));
     // Program açılırken perde vardı ve hata/uyarı çıktıysa perde kalksın (giriş ekranında perde yok)
     if (bolum !== 'bolum_lisans') perdeKaldir();
   }
@@ -292,15 +317,51 @@
     if (c) c.hidden = !acik; if (p) p.hidden = !acik;
     try { if (window.KozmikArkaPlan) acik ? KozmikArkaPlan.oynat() : KozmikArkaPlan.duraklat(); } catch (e) {}
   }
+  // ŞİFRE KURALI (G-0014 §1.6; Supabase şifre politikası `uygula.mjs --panel`: en az 10, küçük + büyük harf + rakam).
+  // Yalnız YENİ şifrelerde geçerli; eski şifreyle giriş sürer (Giriş sekmesinde minlength 8 kalır).
+  const SIFRE_EN_AZ = 10;
+  // G-0014 B3: kural yalnız İngilizce (ASCII) harfleri sayar — metin bunu açıkça söyler (Cenk 07.11.2026 onayı)
+  const SIFRE_KURAL = 'En az 10 karakter; büyük harf, küçük harf ve rakam içermeli (İngilizce harflerle: A–Z, a–z; Ç, Ş, İ gibi harfler sayılmaz).';
+  const SIFRE_HATA = 'Şifre en az 10 karakter olmalı ve büyük harf, küçük harf, rakam içermeli (İngilizce harflerle: A–Z, a–z; Ç, Ş, İ gibi harfler sayılmaz).';
+  // Yeni şifre kuralı tarayıcıda da denetlenir: ekrandaki kural metni, panel ayarı (`--panel`) uygulanmadan önce de doğru olsun.
+  // Karakter kümeleri Supabase password_required_characters ile aynı: a-z : A-Z : 0-9 (ASCII; ç/ş/ğ gibi harfler sayılmaz).
+  // Kaynak: https://supabase.com/docs/guides/auth/password-security
+  function sifreKuralHatasi(s){
+    s = String(s || '');
+    if (s.length < SIFRE_EN_AZ || !/[a-z]/.test(s) || !/[A-Z]/.test(s) || !/[0-9]/.test(s)) return SIFRE_HATA;
+    return '';
+  }
+  // «Email not confirmed» → supabase-js hata kodu email_not_confirmed (Auth: doğrulanmamış hesap giriş yapamaz)
+  const dogrulanmadiMi = e => /Email not confirmed/i.test((e && e.message) || '') || (e && e.code) === 'email_not_confirmed';
+  // G-0014 S7 (CWE-209; OWASP Error Handling Cheat Sheet): tanınmayan sunucu iletisi kullanıcıya HAM gösterilmez —
+  // genel Türkçe ileti gösterilir, ayrıntı yalnız konsola yazılır (console.warn). Geçen kendi iletilerimiz:
+  // trHata() ile atılanlar ve SQL fonksiyonlarımızın `raise exception` iletileri (PostgreSQL SQLSTATE P0001, Türkçe).
+  const GENEL_HATA = 'Beklenmeyen bir hata oldu. Biraz sonra tekrar dene.';
+  function trHata(m){ const e = new Error(m); e.turkce = true; return e; }
   function hataMetni(e){
     const m = (e && e.message) || String(e);
+    if (e && e.turkce) return m;
     if (/Invalid login credentials/i.test(m)) return 'E-posta ya da şifre hatalı.';
-    if (/Email not confirmed/i.test(m)) return 'E-posta adresin henüz doğrulanmadı. Gelen kutundaki bağlantıya tıkla.';
+    if (dogrulanmadiMi(e)) return 'E-posta adresin henüz doğrulanmadı. Gelen kutundaki bağlantıya tıkla; e-posta gelmediyse aşağıdan yeniden gönder.';
     if (/already registered/i.test(m)) return 'Bu e-posta ile zaten bir hesap var. Giriş yap.';
-    if (/Password should be/i.test(m)) return 'Şifre en az 8 karakter olmalı.';
+    if (/known to be weak|pwned/i.test(m)) return 'Bu şifre sızdırılmış şifre listelerinde var. Başka bir şifre seç.';
+    // supabase/auth internal/api/password.go: MaxPasswordLength = 72 (bcrypt sınırı, bayt)
+    if (/cannot be longer than/i.test(m)) return 'Şifre en çok 72 karakter olabilir (Türkçe harfler 2 karakter sayılır).';
+    if (/Password should|weak_password|WeakPassword/i.test(m) || (e && e.code) === 'weak_password') return SIFRE_HATA;
+    if ((e && e.code) === 'email_address_invalid' || /Unable to validate email|invalid format/i.test(m)) return 'E-posta adresi geçersiz görünüyor. Adresi kontrol et.';
+    // Supabase aynı adrese 60 sn içinde ikinci e-postayı vermez: «For security purposes, you can only request this after N seconds.»
+    const sn = m.match(/only request this after (\d+) seconds?/i);
+    if (sn) return 'Güvenlik için ' + sn[1] + ' saniye sonra tekrar isteyebilirsin.';
     if (/rate limit/i.test(m)) return 'Çok sık denendi. Biraz bekleyip tekrar dene.';
     if (/captcha/i.test(m)) return 'Güvenlik doğrulaması geçilemedi. Sayfayı yenileyip tekrar dene.';
-    return m;
+    if (/Auth session missing|session_not_found|JWT expired/i.test(m) || (e && e.code) === 'session_not_found') return 'Oturumun kapanmış. Çıkış yapıp yeniden giriş yap.';
+    if (/Failed to fetch|NetworkError|Load failed|zaman aşımı/i.test(m)) return 'Sunucuya ulaşılamadı. İnternet bağlantını kontrol edip tekrar dene.';
+    if (e && e.code === 'P0001' && m) return m;   // kendi SQL fonksiyonlarımızın Türkçe iletisi
+    // kullanici-verisi.js iletileri (parantez içindeki ham ayrıntı gösterilmez)
+    if (/^Bulut verin okunamadı/.test(m)) { console.warn('[hata ayrıntısı]', e); return 'Bulut verin okunamadı.'; }
+    if (/^Buluttaki kayıt tanınmadı/.test(m)) return m;
+    console.warn('[hata ayrıntısı]', e);
+    return GENEL_HATA;
   }
 
   // --- giriş / kayıt sekmeleri
@@ -310,12 +371,14 @@
     const kayit = kip === 'kayit';
     $('kayit_alanlari').hidden = !kayit;
     $('baslik').textContent = kayit ? 'Hesap oluştur' : 'Giriş yap';
-    // OTOMATİK DENEME (23.10.2026, supabase/11-deneme.sql): kayıt olan hesap 7 gün demo olarak hemen açılır
+    // KAYIT ONAYI (G-0015, 06.11.2026, supabase/14-kayit-onayi.sql): kayıt olan e-postasını doğrular, hesap Cenk
+    // onaylayınca açılır, 7 günlük demo onay günü başlar (eski «hemen açılır» akışı, 11-deneme.sql, artık geçerli değil)
     // 06.11.2026 — Cenk: «hesap oluşturma kısmındaki açıklamayı kaldır» → Kayıt ol sekmesinde açıklama satırı gizli
     $('aciklama').textContent = kayit ? '' : 'Lisanslı hesabınla devam et.';
     $('aciklama').hidden = kayit;
     $('gonder').textContent = kayit ? 'Kayıt ol' : 'Giriş yap';
     $('sifre').autocomplete = kayit ? 'new-password' : 'current-password';
+    $('sifre').minLength = kayit ? SIFRE_EN_AZ : 8;   // yeni şifre kurala uyar; girişte eski şifreler geçer
     $('sifre_tekrar_alan').hidden = !kayit; $('sifre2').required = kayit;
     if (!kayit) $('sifre2').value = '';
     mesaj('');
@@ -336,7 +399,7 @@
   async function captchaBekle(){
     if (!A.TURNSTILE_SITE_KEY) return null;
     for (let i = 0; i < 50 && !captchaToken; i++) await new Promise(r => setTimeout(r, 200));
-    if (!captchaToken) throw new Error('Güvenlik doğrulaması tamamlanmadı — kutucuğu işaretleyip tekrar dene.');
+    if (!captchaToken) throw trHata('Güvenlik doğrulaması tamamlanmadı — kutucuğu işaretleyip tekrar dene.');
     return captchaToken;
   }
   captchaKur();
@@ -344,6 +407,7 @@
   $('form').addEventListener('submit', async ev => {
     ev.preventDefault();
     const eposta = $('eposta').value.trim(), sifre = $('sifre').value;
+    if (kip === 'kayit' && sifreKuralHatasi(sifre)) { mesaj(sifreKuralHatasi(sifre), 'hata'); $('sifre').focus(); return; }
     if (kip === 'kayit' && sifre !== $('sifre2').value) { mesaj('İki şifre aynı değil. Şifreni iki kutuya da aynı yaz.', 'hata'); $('sifre2').focus(); return; }
     $('gonder').disabled = true; mesaj('');
     try {
@@ -354,15 +418,42 @@
           data: { ad: $('ad').value.trim(), firma: $('firma').value.trim() },
           emailRedirectTo: location.origin + location.pathname } });
         if (error) throw error;
-        // E-posta onayı kapalı (13-eposta-dogrulama.sql): oturum hemen gelir, SIGNED_IN demoyu açar.
-        // Onay yeniden açılırsa eski akış: bağlantıyla doğrula, sonra gir.
-        if (!data.session) mesaj('Kayıt alındı. E-postana gelen bağlantıyla adresini doğrula; ardından 7 günlük demo hesabınla giriş yapabilirsin.', 'tamam');
+        // Confirm email AÇIK (G-0015): signUp oturum döndürmez; doğrulama bağlantısı siteye döner, supabase-js oturumu
+        // URL'den kurar (SIGNED_IN → lisansaBak → onaysız hesapta «Onay bekleniyor»).
+        // S16 (hesap numaralandırma): kayıtlı bir adresle yeniden kayıtta Supabase hata DÖNDÜRMEZ, data.user.identities
+        // boş gelir — bu durumda da AYNI ileti gösterilir; «zaten hesap var» denmez.
+        if (!data.session) {
+          mesaj('Kayıt alındı. ' + eposta + ' adresine doğrulama bağlantısı gönderdik. Bağlantıya tıklayarak adresini doğrula; ' +
+            'hesabın Cenk Altınay onayladığında açılır ve 7 günlük demo o gün başlar. E-posta gelmediyse gereksiz klasörüne bak ' +
+            'ya da aşağıdan yeniden gönder. Hesabın zaten varsa giriş yap ya da «Şifremi unuttum»u kullan.', 'tamam');
+          $('dogrulama_yeniden').hidden = false;
+        }
       } else {
-        const { error } = await sb.auth.signInWithPassword({ email: eposta, password: sifre, options: { captchaToken: captchaTokenSu } });
+        const { data, error } = await sb.auth.signInWithPassword({ email: eposta, password: sifre, options: { captchaToken: captchaTokenSu } });
         if (error) throw error;
+        // §1.6: eski şifre yeni kurala uymuyorsa Supabase girişte weakPassword döndürür — giriş sürer, yalnız bilgi verilir
+        if (data && data.weakPassword) ZAYIF_SIFRE = true;
       }
-    } catch (e) { mesaj(hataMetni(e), 'hata'); }
+    } catch (e) {
+      mesaj(hataMetni(e), 'hata');
+      if (dogrulanmadiMi(e)) $('dogrulama_yeniden').hidden = false;
+    }
     finally { $('gonder').disabled = false; captchaYenile(); }
+  });
+
+  // DOĞRULAMA E-POSTASINI YENİDEN GÖNDER (G-0014 §1.3). Supabase kayıtlı olmayan ya da zaten doğrulanmış adreste de
+  // hata döndürmez (hesap numaralandırması yok); ileti her durumda aynıdır. Sıklık: aynı adrese 60 sn, proje saatte 30 e-posta.
+  $('dogrulama_yeniden').addEventListener('click', async () => {
+    const email = $('eposta').value.trim();
+    if (!email) { mesaj('Önce e-posta adresini yaz.', 'hata'); $('eposta').focus(); return; }
+    const b = $('dogrulama_yeniden'); b.disabled = true;
+    try {
+      const tk = await captchaBekle();
+      const { error } = await sb.auth.resend({ type: 'signup', email, options: { emailRedirectTo: location.origin + location.pathname, captchaToken: tk } });
+      if (error) throw error;
+      mesaj('Doğrulama bağlantısı yeniden gönderildi. Gelen kutunu (ve gereksiz klasörünü) kontrol et.', 'tamam');
+    } catch (e) { mesaj(hataMetni(e), 'hata'); }
+    finally { b.disabled = false; captchaYenile(); }
   });
 
   $('unuttum').addEventListener('click', async () => {
@@ -376,6 +467,7 @@
 
   $('form_yeni').addEventListener('submit', async ev => {
     ev.preventDefault();
+    if (sifreKuralHatasi($('yeni_sifre').value)) { mesaj(sifreKuralHatasi($('yeni_sifre').value), 'hata'); $('yeni_sifre').focus(); return; }
     if ($('yeni_sifre').value !== $('yeni_sifre2').value) { mesaj('İki şifre aynı değil. Yeni şifreni iki kutuya da aynı yaz.', 'hata'); $('yeni_sifre2').focus(); return; }
     const { error } = await sb.auth.updateUser({ password: $('yeni_sifre').value });
     if (error) return mesaj(hataMetni(error), 'hata');
@@ -403,7 +495,7 @@
     if (!data.session) { mesaj('Şifre değiştirmek için önce giriş yap.', 'hata'); return; }
     const ep = data.session.user.email || '';
     $('sd_eposta').value = ep;
-    $('sd_kim').textContent = (ep ? ep + ' hesabının şifresi. ' : '') + 'En az 8 karakter.';
+    $('sd_kim').textContent = (ep ? ep + ' hesabının şifresi. ' : '') + SIFRE_KURAL;
     $('sd_yeni').value = ''; $('sd_tekrar').value = ''; sdMesaj('');
     $('sd_gonder').disabled = false;
     $('sifre_modal').hidden = false; $('sd_yeni').focus();
@@ -423,7 +515,7 @@
   $('sd_form').addEventListener('submit', async ev => {
     ev.preventDefault();
     const y = $('sd_yeni').value, t = $('sd_tekrar').value;
-    if (y.length < 8) { sdMesaj('Şifre en az 8 karakter olmalı.', 'hata'); $('sd_yeni').focus(); return; }
+    if (sifreKuralHatasi(y)) { sdMesaj(sifreKuralHatasi(y), 'hata'); $('sd_yeni').focus(); return; }
     if (y !== t) { sdMesaj('İki şifre aynı değil.', 'hata'); $('sd_tekrar').focus(); return; }
     $('sd_gonder').disabled = true; sdMesaj('Kaydediliyor…');
     try {
@@ -451,8 +543,54 @@
     try { await lisansaBakGovde(oturum); } finally { kontrolde = false; }
   }
 
+  // İKİ ADIMLI DOĞRULAMA ADIMI (G-0014 §4.2). Yalnız doğrulanmış TOTP faktörü olan hesapta (aal1 → aal2) kod sorulur;
+  // faktörü olmayan hesap (currentLevel = nextLevel = aal1) ve AAL okunamazsa akış AYNEN sürer — kimse kilitlenmez.
+  // Asıl kapı sunucuda: taslak 05 (yonetici_mi aal2 ister). Kaynak: https://supabase.com/docs/guides/auth/auth-mfa/totp
+  async function mfaGerekli(){
+    try {
+      const { data, error } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+      return !error && !!data && data.currentLevel === 'aal1' && data.nextLevel === 'aal2';
+    } catch (e) { return false; }
+  }
+  $('form_mfa').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const code = $('mfa_kod').value.trim();
+    if (!/^\d{6}$/.test(code)) { mesaj('Doğrulama uygulamandaki 6 haneli kodu yaz.', 'hata'); $('mfa_kod').focus(); return; }
+    $('mfa_gonder').disabled = true; mesaj('');
+    try {
+      const { data: f, error: fh } = await sb.auth.mfa.listFactors();
+      if (fh) throw fh;
+      const totp = (f && f.totp) || [];   // listFactors().totp yalnız doğrulanmış faktörleri içerir
+      if (!totp.length) throw new Error('faktör yok');
+      const { error } = await sb.auth.mfa.challengeAndVerify({ factorId: totp[0].id, code });
+      if (error) throw error;
+      $('mfa_kod').value = '';
+      const { data } = await sb.auth.getSession();
+      if (data.session) lisansaBak(data.session);
+    } catch (e) { mesaj('Kod hatalı ya da süresi geçti.', 'hata'); $('mfa_kod').select(); }
+    finally { $('mfa_gonder').disabled = false; }
+  });
+  $('mfa_cikis').addEventListener('click', cikis);
+
+  // §1.6 bilgi şeridi: giriş, program ve ana sayfanın üstünde görünür; tıklayınca ya da 20 sn sonra kapanır
+  const ZAYIF_METIN = 'Şifren yeni kurallara uymuyor; menüden Şifre değiştir ile yenileyebilirsin.';
+  function zayifSifreBilgisi(){
+    ZAYIF_SIFRE = false;
+    const s = $('serit');
+    s.textContent = ZAYIF_METIN; s.hidden = false; s.style.cursor = 'pointer';
+    s.onclick = function(){ if (s.textContent === ZAYIF_METIN) s.hidden = true; };
+    setTimeout(function(){ if (s.textContent === ZAYIF_METIN) s.hidden = true; }, 20000);
+  }
+
   async function lisansaBakGovde(oturum){
+    if (await mfaGerekli()) {
+      goster('bolum_mfa'); mesaj(''); perdeKaldir();
+      setTimeout(() => $('mfa_kod').focus(), 0);
+      return;
+    }
     goster('bolum_lisans'); mesaj('');
+    // §1.6: eski şifre yeni kurala uymuyor (girişte weakPassword) — yalnız bilgi
+    if (ZAYIF_SIFRE) zayifSifreBilgisi();
     $('kim').textContent = oturum.user.email;
     BASVURU_UID = oturum.user.id; BASVURU_EPOSTA = oturum.user.email || '';
     $('yenile').hidden = true; $('basvuru_ac').hidden = true;
@@ -474,7 +612,8 @@
         $('lisans_metin').textContent = 'Lisansın ' + trTarih(d.bitis) + ' tarihinde sona erdi. Yenilemek için Cenk Altınay ile iletişime geç.';
       } else {
         $('lisans_baslik').textContent = 'Onay bekleniyor';
-        $('lisans_metin').textContent = 'Hesabın oluşturuldu, lisansın henüz etkinleştirilmedi. Onaylandığında bu sayfayı yenilemen yeterli.';
+        $('lisans_metin').textContent = (dogrulamaDonusu ? 'E-posta adresin doğrulandı. ' : '') +
+          'Hesabın oluşturuldu, lisansın henüz etkinleştirilmedi. Onaylandığında bu sayfayı yenilemen yeterli.';
       }
       $('basvuru_ac').hidden = false;
       $('yenile').hidden = false; perdeKaldir();
@@ -539,7 +678,7 @@
         ? await new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).text()
         : await blob.text();
       if (veriSozu) {
-        try { await veriSozu; } catch (e) { throw new Error('Verilerin hazırlanamadı: ' + hataMetni(e)); }
+        try { await veriSozu; } catch (e) { throw trHata('Verilerin hazırlanamadı: ' + hataMetni(e)); }
         metin = KullaniciVerisi.gom(metin);
       }
       const url = URL.createObjectURL(new Blob([metin], { type: 'text/html;charset=utf-8' }));
@@ -580,7 +719,9 @@
     if (!r.ok) {
       let m = '';
       try { const j = await r.json(); m = j.message || j.error || ''; } catch (e) {}
-      throw new Error(m || ('HTTP ' + r.status));
+      // G-0014 S7: depo iletisi (ör. «Object not found») yalnız konsola; kullanıcıya durum koduyla Türkçe ileti
+      console.warn('[program dosyası]', r.status, m);
+      throw trHata((r.status === 400 || r.status === 404 ? 'dosya bulunamadı ya da erişim iznin yok' : r.status === 401 || r.status === 403 ? 'erişim iznin yok' : 'sunucu yanıt vermedi') + ' (HTTP ' + r.status + ').');
     }
     return r.blob();
   }
@@ -588,8 +729,9 @@
   // ---------------- LİSANS BAŞVURUSU (23.10.2026) ----------------
   // Demo / süresi dolmuş kullanıcı formu doldurur → lisans_basvur() (oturum şart, 10 dk'da bir) →
   // tetikleyici yöneticiye e-posta yollar. Ad / firma hesaptan önceden doldurulur.
-  // E-POSTA DOĞRULAMASI (13-eposta-dogrulama.sql): demo doğrulamasız açılır; e-postası doğrulanmamış
-  // hesap başvururken «Kod gönder» → e-postasına gelen 6 haneli kodu yazar (bir kez; sonra hesap doğrulanmış).
+  // E-POSTA DOĞRULAMASI (13-eposta-dogrulama.sql, 17-kayit-dogrulama-ve-eposta-kodu.sql): 06.11.2026'dan sonra
+  // kayıt olan hesap doğrulama bağlantısıyla doğrulanmış gelir, kod istenmez. 23.10–06.11 arasında doğrulamasız
+  // açılmış eski hesap başvururken «Kod gönder» → e-postasına gelen 6 haneli kodu yazar (bir kez; sonra doğrulanmış).
   let BASVURU_UID = null, BASVURU_EPOSTA = '', BV_DOGRULANDI = true, kodSayac = null;
   function bvDogrulamaGoster(){
     $('bv_dogrula').hidden = BV_DOGRULANDI;
@@ -1047,6 +1189,14 @@
 
   (async () => {
     const { data } = await sb.auth.getSession();
+    // §1.5 hatalı dönüş (süresi dolmuş / kullanılmış / geçersiz bağlantı): sabit Türkçe ileti + yeniden gönder, adres temizlenir
+    if (donusHatasi && !data.session) {
+      mesaj(donusHatasi === 'otp_expired'
+        ? 'Doğrulama bağlantısının süresi dolmuş ya da daha önce kullanılmış. E-posta adresini yazıp yeniden gönder. (Şifre sıfırlama bağlantısıysa «Şifremi unuttum» ile yenisini iste.)'
+        : 'Bağlantı geçersiz. Yeniden gönder ya da giriş yap.', 'hata');
+      $('dogrulama_yeniden').hidden = false;
+    }
+    if (donusHatasi) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
     if (data.session && !acik && $('bolum_yeni').hidden) lisansaBak(data.session);
   })();
 })();

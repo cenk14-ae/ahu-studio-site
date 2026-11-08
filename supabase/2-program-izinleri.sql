@@ -113,3 +113,8 @@ on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
 insert into public.programlar (id, ad, dosyalar) values
   ('makine', 'Makine Hesap Defteri', '{araclar/makine-hesap-defteri.html}')
 on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
+
+-- 13) 09.11.2026 — Rooftop Hesap Sihirbazı
+insert into public.programlar (id, ad, dosyalar) values
+  ('rooftop', 'Rooftop Hesap Sihirbazı', '{araclar/rooftop-hesap-sihirbazi.html}')
+on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;

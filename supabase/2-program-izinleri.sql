@@ -108,3 +108,8 @@ on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
 insert into public.programlar (id, ad, dosyalar) values
   ('ahulight', 'AHU Studio Light', '{araclar/ahu-light.html}')
 on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
+
+-- 12) 08.11.2026 — Makine Hesap Defteri (G-0020; canlıya uygulandı)
+insert into public.programlar (id, ad, dosyalar) values
+  ('makine', 'Makine Hesap Defteri', '{araclar/makine-hesap-defteri.html}')
+on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;

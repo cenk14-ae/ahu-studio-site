@@ -12,6 +12,10 @@
 -- ============================================================================
 
 alter table public.lisanslar add column if not exists admin_kod boolean not null default false;
+-- lisanslar'da OKUMA izni SÜTUN SÜTUN verilir (19-lisans-notlari.sql notlar'ı gizler) — yeni sütun izin almazsa
+-- yönetim panelinin kullanıcı listesi «yetki yok» der (11.11.2026'da oldu). Satırı yine RLS sınırlar
+-- (kendi satırı ya da yönetici); izni yalnız yönetici yazar (lisans_guncelle politikası).
+grant select (admin_kod) on public.lisanslar to authenticated;
 
 create or replace function public.lisans_durumu()
 returns json language sql stable security definer set search_path = public as $$

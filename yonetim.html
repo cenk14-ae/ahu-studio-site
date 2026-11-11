@@ -294,7 +294,7 @@
   // tablo açık sütun listesiyle okunur, notlar yönetici RPC'si yonetici_lisans_notlari() ile gelir.
   // 06 UYGULANMADAN önce RPC yoktur → notlar eski yoldan (notlar sütunu) okunur; ikisi de olmazsa NOTLAR_YUKLENDI = false:
   // not kutusu kapanır ve Kaydet notlar alanını GÖNDERMEZ (boş kutu kaydedilip var olan notlar silinmesin, §2.3).
-  const SUTUNLAR = 'user_id,eposta,ad,firma,aktif,surum,bitis,olusturma,son_giris,programlar,aktif_oturum,oturum_zamani,oturum_cihaz,firma_id,demo,eposta_dogrulandi';
+  const SUTUNLAR = 'user_id,eposta,ad,firma,aktif,surum,bitis,olusturma,son_giris,programlar,aktif_oturum,oturum_zamani,oturum_cihaz,firma_id,demo,eposta_dogrulandi,admin_kod';
   let NOTLAR_YUKLENDI = false;
   async function notlariOku(){
     const r = await sb.rpc('yonetici_lisans_notlari');
@@ -360,11 +360,14 @@
 
   // Kullanıcının açabildiği programlar — satırın altında aç/kapat düğmeleri (Kaydet ile yazılır)
   function programSatiri(l){
-    if (yoneticiler.has(l.user_id)) return '<tr class="prog-satir" data-id="' + l.user_id + '"><td colspan="9" class="ufak">Programlar: yönetici hepsini açar</td></tr>';
+    if (yoneticiler.has(l.user_id)) return '<tr class="prog-satir" data-id="' + l.user_id + '"><td colspan="9" class="ufak">Programlar: yönetici hepsini açar · admincenk kodu: yöneticide her zaman çalışır</td></tr>';
     const acik = new Set(l.programlar || []);
     return '<tr class="prog-satir" data-id="' + l.user_id + '"><td colspan="9"><span class="ufak" style="margin-right:8px">Programlar:</span>' +
       A.PROGRAMLAR.map(p => '<button type="button" class="prog' + (acik.has(p.id) ? ' acik' : '') + '" data-prog="' + kac(p.id) +
         '" aria-pressed="' + acik.has(p.id) + '" style="--pr:' + kac(p.renk || '#4d8dff') + '" title="Aç/kapat — Kaydet ile yazılır">' + kac(p.ad) + '</button>').join('') +
+      // ADMINCENK İZNİ (11.11.2026): AHU Studio'da 'admincenk' yazınca imalat modu (gerçek kapak yerleşimi) açılsın mı
+      '<span class="ufak" style="margin:0 8px 0 14px">AHU Studio:</span><button type="button" class="prog' + (l.admin_kod ? ' acik' : '') +
+        '" data-adminkod="1" aria-pressed="' + !!l.admin_kod + '" style="--pr:#e0a33a" title="Açıksa bu kullanıcıda admincenk kodu çalışır (gizli imalat modu: gerçek kapak yerleşimi, santral seçimi). Kaydet ile yazılır">admincenk kodu</button>' +
       '</td></tr>';
   }
 
@@ -432,7 +435,7 @@
   }
 
   $('satirlar').addEventListener('click', async e => {
-    const pr = e.target.closest('button[data-prog]');
+    const pr = e.target.closest('button[data-prog],button[data-adminkod]');
     if (pr) { pr.classList.toggle('acik'); pr.setAttribute('aria-pressed', pr.classList.contains('acik')); return; }
     const b = e.target.closest('button[data-is]'); if (!b) return;
     const tr = b.closest('tr'), id = tr.dataset.id;
@@ -481,6 +484,8 @@
     if (NOTLAR_YUKLENDI && satir && satir.notOkundu) deg.notlar = tr.querySelector('[data-alan=notlar]').value.trim() || null;
     if (ptr && ptr.querySelector('button[data-prog]'))
       deg.programlar = Array.from(ptr.querySelectorAll('button[data-prog].acik')).map(x => x.dataset.prog);
+    const ak = ptr && ptr.querySelector('button[data-adminkod]');
+    if (ak) deg.admin_kod = ak.classList.contains('acik');
     b.disabled = true;
     // G-0014 B1: tetikleyici (lisans_onay_demo) bitişi sunucuda yazar; satır güncellemeden SONRA geri okunur ki bitiş
     // tabloda hemen görünsün ve sonraki Kaydet bayat (boş) bitişi göndermesin. aktif/demo/bitis/surum 06'dan sonra da

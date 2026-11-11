@@ -19,7 +19,7 @@
   const BOYUT_SINIR = 2 * 1024 * 1024;      // veritabanındaki kısıtın aynısı (octet_length ≤ 2 MB)
   const COP_GUN = 30;
   const COP = '__cop__';
-  let AY = null;               // { sb, uid, yonetici, cerceve }
+  let AY = null;               // { sb, uid, yonetici, adminKod, cerceve }
   let f0 = null;               // AHU Studio 3B Tasarım penceresi (son el sıkışan)
   let dinleyici = false;
   let baglam = null;           // kutuphane_baglam()
@@ -103,7 +103,9 @@
     if (!AY || e.origin !== location.origin || !e.data || typeof e.data.type !== 'string') return;
     if (e.data.type.indexOf('kutuphane') !== 0 || !programdan(e.source)) return;
     const t = e.data.type;
-    if (t === 'kutuphaneVarMi') { f0 = e.source; try { f0.postMessage({ type: 'kutuphaneHazir' }, location.origin); } catch (x) { /* */ } }
+    // adminKod (11.11.2026): admincenk kodu bu kullanıcıda çalışsın mı — lisans_durumu().admin_kod (yönetici her zaman).
+    // Asıl kapı sunucudadır (imalat işleri izinsiz lisansa 403); bu yalnız AHU Studio'da kodu açar/kapatır.
+    if (t === 'kutuphaneVarMi') { f0 = e.source; try { f0.postMessage({ type: 'kutuphaneHazir', adminKod: !!(AY && AY.adminKod) }, location.origin); } catch (x) { /* */ } }
     else if (t === 'kutuphaneAc') { f0 = e.source; ac(e.data); }
     else if (t === 'kutuphaneEklendi') { const r = bekleyen[e.data.id]; if (r) { delete bekleyen[e.data.id]; r(e.data); } }
   }
@@ -658,7 +660,7 @@
   window.Kutuphane = {
     // index.html çağırır: AHU Studio açılmadan ÖNCE (el sıkışma program açılırken gelir)
     kur(o) {
-      AY = { sb: o.sb, uid: o.uid, yonetici: !!o.yonetici, cerceve: o.cerceve };
+      AY = { sb: o.sb, uid: o.uid, yonetici: !!o.yonetici, adminKod: !!o.adminKod, cerceve: o.cerceve };
       if (!dinleyici) { window.addEventListener('message', dinle); dinleyici = true; }
     },
     kapat,

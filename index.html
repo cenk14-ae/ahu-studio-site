@@ -302,6 +302,8 @@
 <script src="bekleme.js?v=20261106a"></script>
 <script src="kutuphane.js"></script>
 <script src="etkinlik-kaydi.js?v=20261013d"></script>
+<script src="qr-kod.js?v=20261112a"></script>
+<script src="qr-giris.js?v=20261112a"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <script>
 (function(){
@@ -589,6 +591,8 @@
   }
 
   async function lisansaBak(oturum){
+    // KAREKODLA GİRİŞ (12.11.2026): telefonda ?qr= adresi → lisans / tek oturum akışı yerine onay ekranı (qr-giris.js)
+    if (window.QrGiris && QrGiris.yakala(oturum)) return;
     if (kontrolde || acik) return;
     kontrolde = true;
     try { await lisansaBakGovde(oturum); } finally { kontrolde = false; }
@@ -679,7 +683,9 @@
       if (od && od.baska_acik && !OTURUM_ZORLA) { acikUyarisi(od); return; }
       try {
         await sb.rpc('oturum_baslat', { cihaz: navigator.userAgent });
-        sb.auth.signOut({ scope: 'others' }).then(function(){}, function(){});   // öteki cihazların yenileme belirteçleri düşer
+        // karekodla girişte onaylayan telefonun oturumu düşürülmez (bir dahaki karekod için girişli kalsın); etkin cihaz yine bu
+        if (!(window.QrGiris && QrGiris.qrIleGirildi()))
+          sb.auth.signOut({ scope: 'others' }).then(function(){}, function(){});   // öteki cihazların yenileme belirteçleri düşer
       } catch (e) {}
       oturumIzle(oturum);
     }
@@ -1231,6 +1237,8 @@
   function trTarih(s){ const p = String(s).split('-'); return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : s; }
 
   window.addEventListener('beforeunload', e => { if (acik) { e.preventDefault(); e.returnValue = ''; } });
+
+  if (window.QrGiris) QrGiris.kur({ sb, A, mesaj, goster });   // KAREKODLA GİRİŞ (qr-giris.js)
 
   sb.auth.onAuthStateChange((olay, oturum) => {
     if (olay === 'PASSWORD_RECOVERY') { goster('bolum_yeni'); return; }

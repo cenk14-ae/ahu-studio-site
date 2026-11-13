@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<title>Program açıcı</title>
+<!-- PROGRAM AÇICI (G-0016, S11). index.html sıkı bir CSP taşır (satır içi betik yasak). blob: adresli bir belge, CSP'yi
+     onu GEZİNMEYE BAŞLATAN belgeden devralır (HTML Living Standard «determining navigation params policy container»:
+     yerel şemalı adreste başlatıcının politika kabı kopyalanır; WPT content-security-policy/inheritance). Programlar
+     (tek dosya HTML: satır içi betik, CDN kütüphaneleri, kendi çerçeveleri) index.html'in politikasını devralırsa çalışmaz.
+     Bu yüzden blob'u ve gezinmeyi bu CSP'siz, aynı kökenli, gizli yardımcı belge yapar: program bugünkü gibi (CSP'siz)
+     çalışır, kabuk sayfası (oturum, giriş formu) sıkı CSP altında kalır. Blob adresi bu belge yaşadıkça geçerlidir
+     (program kendini yeniden yüklerse de açılır). Bu belgeye BİLEREK CSP konmadı: konursa bütün programlar onu devralır.
+     Yalnız aynı kökenli bir üst sayfa çağırabilir (başka köken window.programAc'a erişemez); doğrudan açılırsa hiçbir şey yapmaz. -->
+<script>
+(function () {
+  'use strict';
+  var ust = null;
+  try { if (window.parent !== window && window.parent.location.origin === location.origin) ust = window.parent; } catch (e) { ust = null; }
+  if (!ust) return;
+  // cerceve: üst sayfadaki #uygulama iframe öğesi; metin: programın HTML'i (kullanici-verisi katmanı gömülü olabilir)
+  window.programAc = function (cerceve, metin) {
+    var url = URL.createObjectURL(new Blob([metin], { type: 'text/html;charset=utf-8' }));
+    cerceve.contentWindow.location.replace(url);
+    return url;
+  };
+})();
+</script>
+</head>
+<body></body>
+</html>

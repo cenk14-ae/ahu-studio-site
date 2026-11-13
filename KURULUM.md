@@ -21,10 +21,14 @@ geçerli lisansı olana verir (sade lisans → sade dosya, tam lisans → ikisi)
 2. **SQL Editor** → `supabase/kurulum.sql`'in tamamını yapıştır → **Run**.
 3. **Project Settings → API**: `Project URL` ve `anon public` anahtarını `config.js`'e yaz.
 4. **Authentication → URL Configuration**: *Site URL* = `https://cenkaltinay.com`,
-   *Redirect URLs*'e `https://cenkaltinay.com/**` ekle (doğrulama ve şifre sıfırlama e-postaları buraya döner).
+   *Redirect URLs*'te YALNIZ `https://cenkaltinay.com/` (G-0016: `**` yok, www yok — www.cenkaltinay.com kök alan adına
+   301 ile yönlenir). Kod (index.js `DONUS_ADRESI`) doğrulama, yeniden gönderme ve şifre sıfırlama bağlantılarını hep
+   sitenin köküne döndürür.
 5. **Authentication → Sign In / Providers → Email**: açık; *Confirm email* AÇIK (G-0015, 06.11.2026): kayıt olan
    e-postasını doğrulamadan giremez. Doğrulama e-postası Türkçe (konu «AHU Studio — e-posta adresini doğrula»),
-   bağlantı Site URL'ye (cenkaltinay.com) döner; Redirect URLs yalnız `https://cenkaltinay.com/**` ve `https://www.cenkaltinay.com/**`.
+   bağlantı `https://cenkaltinay.com/` adresine döner. G-0016: site PKCE akışı kullanır (dönüş `?code=…`); e-posta
+   şablonları `{{ .ConfirmationURL }}` ile değişmeden çalışır. Bağlantı, isteğin yapıldığı tarayıcıda açılmalıdır;
+   başka tarayıcıda adres yine doğrulanır, kullanıcı şifresiyle girer.
 
 ## 2. GitHub Pages
 1. Bu klasör bir depo olarak yüklenir (`ahu-studio-site`), **Settings → Pages** → *Deploy from branch* → `main` / `/ (root)`.

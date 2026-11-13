@@ -1,0 +1,515 @@
+(function(){
+  'use strict';
+  const A = window.AHU_AYAR;
+  const $ = id => document.getElementById(id);
+  // G-0016 S5: index.js ile aynı PKCE akışı — bu sayfa adresteki #access_token=… belirtecini oturum olarak KURMAZ
+  // (oturum enjeksiyonu). Kaynak: https://supabase.com/docs/guides/auth/sessions/pkce-flow
+  const sb = window.supabase.createClient(A.SUPABASE_URL, A.SUPABASE_ANON_KEY, { auth: { flowType: 'pkce' } });
+  const PERDE = window.Efekt ? Efekt.perde() : { bitir: function (cb) { if (cb) cb(); } };
+  let perdeKalkti = false;
+  function perdeKaldir(cb){ if (perdeKalkti) return; perdeKalkti = true; PERDE.bitir(cb); }
+  setTimeout(function(){ perdeKaldir(); }, 12000);
+  let liste = [], yoneticiler = new Set(), firmalar = [];
+
+  function mesaj(m, tur){ const e = $('mesaj'); e.textContent = m || ''; e.className = 'mesaj' + (m ? ' goster ' + (tur||'bilgi') : ''); }
+  // G-0014 S7 (CWE-209; OWASP Error Handling Cheat Sheet): ham sunucu iletisi (SQL/PostgREST/Storage) ekrana basılmaz;
+  // bilinen durumlar Türkçe, gerisi genel ileti — ayrıntı yalnız tarayıcı konsolunda (console.warn).
+  // Kendi SQL fonksiyonlarımızın `raise exception` iletileri (SQLSTATE P0001) Türkçe olduğu için aynen gösterilir.
+  function yHata(e){
+    const m = (e && e.message) || '';
+    if (e && e.code === 'P0001' && m) return m;
+    if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return 'sunucuya ulaşılamadı; bağlantıyı kontrol edip tekrar dene.';
+    if (e && (e.code === '42501' || e.code === 'PGRST301' || e.code === 'PGRST303')) { console.warn('[hata ayrıntısı]', e); return 'yetki yok (iki adımlı doğrulama açıksa çıkıp kodla yeniden gir).'; }
+    console.warn('[hata ayrıntısı]', e);
+    return 'beklenmeyen bir hata oldu (ayrıntı tarayıcı konsolunda).';
+  }
+  const tekilMi = e => !!e && (e.code === '23505' || /duplicate|tekil/i.test(e.message || ''));
+  function kac(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function bugun(){ return new Date().toISOString().slice(0,10); }
+  function durum(l){
+    if (!l.aktif) return ['bekliyor','Pasif'];
+    if (l.bitis && l.bitis < bugun()) return ['bitti','Süresi doldu'];
+    return ['ok','Geçerli'];
+  }
+  function tarihSaat(s){ if (!s) return '—'; const d = new Date(s); return d.toLocaleDateString('tr-TR') + ' ' + d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}); }
+  function yilEkle(s){ const d = s && s >= bugun() ? new Date(s) : new Date(); d.setFullYear(d.getFullYear() + 1); return d.toISOString().slice(0,10); }
+
+  $('cikis').addEventListener('click', async () => { await sb.auth.signOut(); location.href = './'; });
+
+  (async () => {
+    const { data } = await sb.auth.getSession();
+    if (!data.session) { location.href = './'; return; }
+    $('kim').textContent = data.session.user.email;
+    const { data: d, error } = await sb.rpc('lisans_durumu');
+    if (error || !d || !d.yonetici) {
+      perdeKaldir();
+      // G-0014 §4.3: taslak 05'ten sonra yönetici yetkisi aal2 ister; şifreyle girilmiş (aal1) oturumda kod gerekli
+      let aal = null;
+      try { const r = await sb.auth.mfa.getAuthenticatorAssuranceLevel(); if (!r.error) aal = r.data; } catch (e) {}
+      if (aal && aal.currentLevel === 'aal1' && aal.nextLevel === 'aal2')
+        return mesaj('Yönetim için iki adımlı doğrulama kodu gerekli — ana sayfadan kodla giriş yap.', 'hata');
+      mesaj('Bu sayfa yalnız yöneticiler içindir.', 'hata'); return;
+    }
+    $('panel_lisans').hidden = false; $('panel_dosya').hidden = false; $('panel_firma').hidden = false; $('panel_basvuru').hidden = false;
+    $('panel_mfa').hidden = false;
+    yukle(); dosyalariCiz(); mfaDurum();
+  })();
+
+  // --- İKİ ADIMLI DOĞRULAMA KAYDI (G-0014 §4.1). listFactors().totp yalnız doğrulanmış faktörleri, .all hepsini içerir.
+  //     Yarım kalmış (unverified) faktörler Başlat'tan önce silinir (aynı adla yeni kayıt reddedilmesin).
+  let MFA_FAKTOR = null;
+  async function mfaDurum(){
+    let data = null, error = null;
+    try { ({ data, error } = await sb.auth.mfa.listFactors()); } catch (e) { error = e; }
+    if (error || !data) { if (error) console.warn('[hata ayrıntısı]', error); $('mfa_durum').textContent = 'okunamadı'; $('mfa_baslat').hidden = true; faktorleriGoster(null); return; }
+    const acik = (data.totp || []).some(f => f.status === 'verified');
+    $('mfa_durum').textContent = acik ? 'Açık' : 'Kapalı';
+    $('mfa_baslat').hidden = acik;
+    if (acik) { $('mfa_kayit').hidden = true; MFA_FAKTOR = null; }
+    faktorleriGoster(data.all || []);
+  }
+  // G-0014 S2 (güvenlik raporu): GoTrue, doğrulanmış faktörü olmayan hesapta aal1 oturumla faktör kaydına izin verir
+  // (supabase/auth internal/api/mfa.go). Şifre ele geçirilirse saldırgan kendi TOTP'sini kaydedebilir; panel bu yüzden
+  // kayıtlı bütün faktörleri ad + oluşturma tarihiyle listeler ve şüpheli durumda uyarır. Metinler textContent ile basılır.
+  // listFactors().all = kullanıcının bütün faktörleri (doğrulanmamışlar dahil; supabase-js 2.119.0 _listFactors).
+  const MFA_AD = 'Yönetici';   // bu panelin enroll() ile verdiği ad
+  function faktorTarih(s){ const d = s ? new Date(s) : null; return d && !isNaN(d) ? d.toLocaleDateString('tr-TR') : 'tarih yok'; }
+  function faktorleriGoster(hepsi){
+    const ul = $('mfa_faktorler'), uy = $('mfa_uyari');
+    ul.textContent = ''; uy.textContent = '';
+    if (!hepsi || !hepsi.length) { ul.hidden = true; uy.hidden = true; return; }
+    const bas = document.createElement('li');
+    bas.style.listStyle = 'none'; bas.style.marginLeft = '-18px';
+    bas.textContent = 'Kayıtlı faktörler (' + hepsi.length + '):';
+    ul.appendChild(bas);
+    hepsi.forEach(f => {
+      const li = document.createElement('li');
+      li.textContent = (f.friendly_name || 'adsız') + ' — ' + faktorTarih(f.created_at) +
+        (f.factor_type === 'totp' ? '' : ' · tür: ' + (f.factor_type || 'bilinmiyor')) +
+        (f.status === 'verified' ? ' · doğrulanmış' : ' · doğrulanmamış');
+      ul.appendChild(li);
+    });
+    ul.hidden = false;
+    const dog = hepsi.filter(f => f.status === 'verified');
+    const yarim = hepsi.filter(f => f.status !== 'verified' && f.id !== MFA_FAKTOR);   // şu an kaydı süren faktör hariç
+    const yabanci = hepsi.filter(f => f.factor_type !== 'totp' || f.friendly_name !== MFA_AD);
+    const u = [];
+    if (dog.length > 1) u.push(dog.length + ' doğrulanmış faktör var; yalnız bir tane olmalı.');
+    if (yarim.length) u.push(yarim.length + ' doğrulanmamış (yarım kalmış) faktör var.');
+    if (yabanci.length) u.push('Bu panelin kaydetmediği faktör var: ' + yabanci.map(f => '«' + (f.friendly_name || 'adsız') + '»').join(', ') + '.');
+    uy.textContent = u.length ? 'Dikkat: ' + u.join(' ') + ' Bunları sen kaydetmediysen şifreni hemen değiştir ve Supabase panelinde ' +
+      'Authentication → Users → hesabın → MFA factors altından sil.' : '';
+    uy.hidden = !u.length;
+  }
+  $('mfa_baslat').addEventListener('click', async () => {
+    const b = $('mfa_baslat'); b.disabled = true;
+    try {
+      const { data: l, error: lh } = await sb.auth.mfa.listFactors();
+      if (lh) throw lh;
+      for (const f of (l.all || []).filter(f => f.status === 'unverified')) {
+        const { error: uh } = await sb.auth.mfa.unenroll({ factorId: f.id });
+        if (uh) throw uh;
+      }
+      const { data, error } = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Yönetici' });
+      if (error) throw error;
+      MFA_FAKTOR = data.id;
+      // supabase-js qr_code'u «data:image/svg+xml;utf-8,<svg…>» olarak verir; SVG '#' içerebilir → kodlanarak yazılır
+      const qr = String(data.totp.qr_code || ''), svg = qr.replace(/^data:image\/svg\+xml;[^,]*,/, '');
+      $('mfa_qr').src = /^\s*</.test(svg) ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) : qr;
+      $('mfa_gizli').textContent = data.totp.secret || '';
+      $('mfa_kayit').hidden = false; $('mfa_kod_kayit').value = ''; $('mfa_kod_kayit').focus();
+      mesaj('QR kodunu tara, gizli anahtarı güvenli bir yere yaz, sonra 6 haneli kodu girip Doğrula\'ya bas.', 'bilgi');
+    } catch (e) { mesaj('İki adımlı doğrulama başlatılamadı: ' + yHata(e), 'hata'); }
+    finally { b.disabled = false; }
+  });
+  $('mfa_dogrula_kayit').addEventListener('click', async () => {
+    const code = $('mfa_kod_kayit').value.trim();
+    if (!MFA_FAKTOR) return mesaj('Önce Başlat\'a bas.', 'hata');
+    if (!/^\d{6}$/.test(code)) { $('mfa_kod_kayit').focus(); return mesaj('Uygulamadaki 6 haneli kodu yaz.', 'hata'); }
+    const b = $('mfa_dogrula_kayit'); b.disabled = true;
+    // G-0014 B9: ağ hatası ya da istisna da yakalanır; düğme her durumda yeniden açılır (finally)
+    let error = null;
+    try { ({ error } = await sb.auth.mfa.challengeAndVerify({ factorId: MFA_FAKTOR, code })); }
+    catch (e) { error = e; }
+    finally { b.disabled = false; }
+    if (error) {
+      $('mfa_kod_kayit').select();
+      if (/Failed to fetch|NetworkError|Load failed/i.test((error && error.message) || '')) return mesaj('Sunucuya ulaşılamadı; bağlantıyı kontrol edip yeniden «Doğrula»ya bas.', 'hata');
+      return mesaj('Kod hatalı ya da süresi geçti. Uygulamadaki güncel kodu yaz.', 'hata');
+    }
+    $('mfa_qr').removeAttribute('src'); $('mfa_gizli').textContent = ''; $('mfa_kod_kayit').value = '';
+    mesaj('İki adımlı doğrulama açıldı.', 'tamam');
+    mfaDurum();
+  });
+  $('mfa_kod_kayit').addEventListener('keydown', e => { if (e.key === 'Enter') $('mfa_dogrula_kayit').click(); });
+
+  // --- lisanslar
+  // G-0014 §2.1 / taslak 06: authenticated rolü lisanslar.notlar sütununu OKUYAMAZ (yönetici notu kullanıcıya görünmez);
+  // tablo açık sütun listesiyle okunur, notlar yönetici RPC'si yonetici_lisans_notlari() ile gelir.
+  // 06 UYGULANMADAN önce RPC yoktur → notlar eski yoldan (notlar sütunu) okunur; ikisi de olmazsa NOTLAR_YUKLENDI = false:
+  // not kutusu kapanır ve Kaydet notlar alanını GÖNDERMEZ (boş kutu kaydedilip var olan notlar silinmesin, §2.3).
+  const SUTUNLAR = 'user_id,eposta,ad,firma,aktif,surum,bitis,olusturma,son_giris,programlar,aktif_oturum,oturum_zamani,oturum_cihaz,firma_id,demo,eposta_dogrulandi,admin_kod';
+  let NOTLAR_YUKLENDI = false;
+  async function notlariOku(){
+    const r = await sb.rpc('yonetici_lisans_notlari');
+    if (!r.error && Array.isArray(r.data)) return r.data;
+    const e = await sb.from('lisanslar').select('user_id,notlar');   // 06 öncesi geçiş yolu (06'dan sonra yetki hatası verir)
+    if (!e.error && Array.isArray(e.data)) return e.data;
+    return null;
+  }
+  async function yukle(){
+    const [{ data, error }, notlar] = await Promise.all([
+      sb.from('lisanslar').select(SUTUNLAR).order('olusturma', { ascending: false }),
+      notlariOku().catch(() => null)]);
+    if (error) return mesaj('Kullanıcılar okunamadı: ' + yHata(error), 'hata');
+    NOTLAR_YUKLENDI = !!notlar;
+    const notMap = new Map((notlar || []).map(x => [x.user_id, x.notlar]));
+    // notOkundu: bu satırın notu gerçekten okundu mu (iki istek arasında açılan yeni hesapta okunmamış olabilir)
+    data.forEach(l => { l.notOkundu = notMap.has(l.user_id); l.notlar = l.notOkundu ? notMap.get(l.user_id) : null; });
+    if (!NOTLAR_YUKLENDI) mesaj('Yönetici notları okunamadı; not kutuları kapalı (notlar korunur, Kaydet onlara dokunmaz).', 'hata');
+    const { data: y } = await sb.from('yoneticiler').select('user_id');
+    yoneticiler = new Set((y || []).map(r => r.user_id));
+    const { data: f, error: fh } = await sb.from('firmalar').select('id,ad,olusturma').order('ad');
+    if (fh) mesaj('Firmalar okunamadı: ' + yHata(fh), 'hata');
+    firmalar = (f || []).slice().sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+    liste = data; ciz(); firmaCiz();
+    basvurulariYukle();
+    perdeKaldir(function(){ if (window.Efekt) Efekt.giris('.panel:not([hidden])'); });
+  }
+  $('tazele').addEventListener('click', yukle);
+
+  // --- lisans başvuruları
+  const ISTENEN = { tam: 'Pro', sade: 'Normal' };
+  async function basvurulariYukle(){
+    const { data, error } = await sb.from('lisans_basvurulari').select('*').order('olusturma', { ascending: false }).limit(200);
+    if (error) { $('basvuru_satirlar').innerHTML = '<tr><td colspan="6">Okunamadı: ' + kac(yHata(error)) + '</td></tr>'; return; }
+    $('basvuru_say').textContent = data.length ? data.length + ' başvuru' : '';
+    $('basvuru_satirlar').innerHTML = data.length ? data.map(b =>
+      '<tr data-bid="' + b.id + '">' +
+        '<td data-e="Tarih">' + tarihSaat(b.olusturma) + '</td>' +
+        '<td data-e="Kullanıcı"><b>' + kac(b.ad || '—') + '</b><br><span class="ufak">' + kac(b.eposta) + (b.firma ? ' · ' + kac(b.firma) : '') + '</span></td>' +
+        '<td data-e="Telefon">' + (b.telefon ? '<a href="tel:' + kac(b.telefon.replace(/[^\d+]/g, '')) + '">' + kac(b.telefon) + '</a>' : '—') + '</td>' +
+        '<td data-e="İstenen">' + kac(ISTENEN[b.surum] || '—') + '</td>' +
+        '<td data-e="Not" style="white-space:pre-wrap;max-width:340px">' + kac(b.mesaj || '') + '</td>' +
+        '<td><button class="dugme ikincil kucuk sil" data-is="basvuru_sil" type="button">Sil</button></td>' +
+      '</tr>').join('') : '<tr><td colspan="6" style="color:var(--t-3)">Henüz başvuru yok.</td></tr>';
+  }
+  $('basvuru_satirlar').addEventListener('click', async e => {
+    const b = e.target.closest('[data-is=basvuru_sil]'); if (!b) return;
+    const id = b.closest('tr').dataset.bid;
+    const { error } = await sb.from('lisans_basvurulari').delete().eq('id', id);
+    if (error) return mesaj('Başvuru silinemedi: ' + yHata(error), 'hata');
+    basvurulariYukle();
+  });
+  $('ara').addEventListener('input', ciz);
+  $('suz').addEventListener('change', ciz);
+
+  // Tarayıcı kimliğinden kısa cihaz adı (yalnız gösterim)
+  function cihazAdi(ua){
+    ua = ua || '';
+    const os = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : 'cihaz';
+    const tb = /OPR\//.test(ua) ? 'Opera' : /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '';
+    return (tb ? tb + ' · ' : '') + os;
+  }
+
+  // Kullanıcının açabildiği programlar — satırın altında aç/kapat düğmeleri (Kaydet ile yazılır)
+  function programSatiri(l){
+    if (yoneticiler.has(l.user_id)) return '<tr class="prog-satir" data-id="' + l.user_id + '"><td colspan="9" class="ufak">Programlar: yönetici hepsini açar · admincenk kodu: yöneticide her zaman çalışır</td></tr>';
+    const acik = new Set(l.programlar || []);
+    return '<tr class="prog-satir" data-id="' + l.user_id + '"><td colspan="9"><span class="ufak" style="margin-right:8px">Programlar:</span>' +
+      A.PROGRAMLAR.map(p => '<button type="button" class="prog' + (acik.has(p.id) ? ' acik' : '') + '" data-prog="' + kac(p.id) +
+        '" aria-pressed="' + acik.has(p.id) + '" style="--pr:' + kac(p.renk || '#4d8dff') + '" title="Aç/kapat — Kaydet ile yazılır">' + kac(p.ad) + '</button>').join('') +
+      // ADMINCENK İZNİ (11.11.2026): AHU Studio'da 'admincenk' yazınca imalat modu (gerçek kapak yerleşimi) açılsın mı
+      '<span class="ufak" style="margin:0 8px 0 14px">AHU Studio:</span><button type="button" class="prog' + (l.admin_kod ? ' acik' : '') +
+        '" data-adminkod="1" aria-pressed="' + !!l.admin_kod + '" style="--pr:#e0a33a" title="Açıksa bu kullanıcıda admincenk kodu çalışır (gizli imalat modu: gerçek kapak yerleşimi, santral seçimi). Kaydet ile yazılır">admincenk kodu</button>' +
+      '</td></tr>';
+  }
+
+  // E-POSTA DOĞRULAMA İŞARETİ (G-0014 §2.4; lisanslar.eposta_dogrulandi, 17-kayit-dogrulama-ve-eposta-kodu.sql).
+  // Doğrulamamış hesap «Aktif» yapılsa bile giriş yapamaz (Confirm email açık, G-0015) — işaret bunu önceden gösterir.
+  // 23.10–06.11 arasında doğrulamasız açılmış eski hesaplarda alan, lisans başvurusundaki kodla dolana kadar boş kalır.
+  function dogrulamaIsareti(l){
+    return l.eposta_dogrulandi
+      ? ' <span class="ufak" style="display:inline;color:var(--ok);white-space:nowrap" title="E-posta doğrulandı: ' + kac(tarihSaat(l.eposta_dogrulandi)) + '">✓ doğrulandı</span>'
+      : ' <span class="ufak" style="display:inline;color:var(--warn);white-space:nowrap" title="E-posta adresi doğrulanmadı — Aktif yapılsa bile doğrulama bağlantısına tıklayana kadar giriş yapamaz">doğrulanmadı</span>';
+  }
+
+  function ciz(){
+    const q = $('ara').value.trim().toLocaleLowerCase('tr'), s = $('suz').value;
+    const gor = liste.filter(l => (!s || durum(l)[0] === s) &&
+      (!q || [l.eposta, l.ad, l.firma, (firmalar.find(f => f.id === l.firma_id) || {}).ad].join(' ').toLocaleLowerCase('tr').includes(q)));
+    const bekleyen = liste.filter(l => !l.aktif).length;
+    $('say').textContent = liste.length + ' kullanıcı' + (bekleyen ? ' · ' + bekleyen + ' onay bekliyor' : '');
+    $('satirlar').innerHTML = gor.map(l => {
+      const [c, t] = durum(l);
+      return '<tr data-id="' + l.user_id + '">' +
+        '<td data-e="Kullanıcı" class="k-kim"><button type="button" class="eposta" data-is="gecmis" title="Giriş ve etkinlik geçmişi">' + kac(l.eposta) + '</button>' + dogrulamaIsareti(l) + '<input data-alan="ad" value="' + kac(l.ad) + '" placeholder="Ad Soyad (antete yazılır)" title="Excel antetinin ÇİZEN hücresine yazılır" style="margin:4px 0 2px;min-width:180px"><br>' +
+          '<select data-alan="firma_id" title="Ortak santral kütüphanesi bu firmaya göre" style="margin:2px 0;padding:5px 7px;font-size:12.5px;min-width:180px">' + firmaSecenek(l.firma_id) + '</select>' +
+          (l.firma ? '<div class="ufak" title="Kayıt olurken yazdığı firma">Kayıtta: ' + kac(l.firma) + '</div>' : '') + '</td>' +
+        '<td data-e="Durum"><span class="rozet ' + c + '">' + t + '</span>' + (l.demo ? ' <span class="rozet bekliyor" title="Dosya indiremez">Demo</span>' : '') + '</td>' +
+        '<td data-e="Aktif"><input type="checkbox" data-alan="aktif"' + (l.aktif ? ' checked' : '') + ' style="width:auto"></td>' +
+        '<td data-e="Demo"><input type="checkbox" data-alan="demo"' + (l.demo ? ' checked' : '') + ' style="width:auto" title="Demo: arayüzü kullanır, Excel / DXF / dosya indiremez"></td>' +
+        (yoneticiler.has(l.user_id)
+          ? '<td data-e="Rol"><span class="rozet yonetici">Yönetici</span><input type="hidden" data-alan="surum" value="tam"></td>'
+          : '<td data-e="Rol"><select data-alan="surum"><option value="sade"' + (l.surum === 'sade' ? ' selected' : '') + '>Normal — sade sürüm</option><option value="tam"' + (l.surum === 'tam' ? ' selected' : '') + '>Pro — tam sürüm</option></select></td>') +
+        '<td data-e="Bitiş" style="white-space:nowrap"><input type="date" data-alan="bitis" value="' + (l.bitis || '') + '" style="width:150px"> <button class="dugme ikincil kucuk" data-is="yil" type="button" title="Bitişe 1 yıl ekle">+1 yıl</button></td>' +
+        (l.notOkundu
+          ? '<td data-e="Not"><input data-alan="notlar" value="' + kac(l.notlar) + '" placeholder="—" style="min-width:140px"></td>'
+          : '<td data-e="Not"><input data-alan="notlar" value="" placeholder="notlar okunamadı" disabled title="Not okunamadı; Kaydet bu satırın notuna dokunmaz" style="min-width:140px"></td>') +
+        '<td data-e="Son giriş" class="ufak">' + tarihSaat(l.son_giris) +
+          (l.aktif_oturum && !yoneticiler.has(l.user_id)
+            ? '<br><span title="' + kac(l.oturum_cihaz || '') + '">Açık: ' + kac(cihazAdi(l.oturum_cihaz)) + ' · ' + tarihSaat(l.oturum_zamani) + '</span>' +
+              ' <button class="baglanti" data-is="oturum" type="button" title="Bu oturumu kapat (kullanıcı yeniden giriş yapmak zorunda kalır)">düşür</button>'
+            : '') + '</td>' +
+        '<td class="k-is" style="white-space:nowrap"><button class="dugme kucuk" data-is="kaydet" type="button">Kaydet</button>' +
+          (yoneticiler.has(l.user_id) ? '' : ' <button class="dugme ikincil kucuk sil" data-is="sil" type="button" title="Hesabı ve lisansını kalıcı olarak sil">Sil</button>') + '</td>' +
+        '</tr>' + programSatiri(l);
+    }).join('') || '<tr><td colspan="9" class="ufak">Kayıt yok.</td></tr>';
+  }
+
+  // kullanici-sil yanıtındaki hata kodları → Türkçe (kod: supabase/functions/kullanici-sil/index.ts)
+  function silmeHatasi(g, sh){
+    g = g || {};
+    if (g.hata === 'kullanici_sil') {
+      // S7: yalnız kendi SQL iletimiz (P0001: «yönetici hesabı silinemez» vb.) gösterilir; başka ayrıntı konsola
+      let a = {}; try { a = JSON.parse(g.ayrinti || '{}') || {}; } catch (x) { a = {}; }
+      if (a.code === 'P0001' && a.message) return a.message;
+      console.warn('[kullanici-sil ayrıntısı]', g.ayrinti);
+      return 'veritabanı silme işlemini reddetti (ayrıntı tarayıcı konsolunda).';
+    }
+    if (g.hata === 'yalniz yonetici') return 'yalnız yönetici silebilir (iki adımlı doğrulama açıksa çıkıp kodla yeniden gir).';
+    if (g.hata === 'oturum yok') return 'oturum bulunamadı; yeniden giriş yap.';
+    if (g.hata === 'hedef') return 'geçersiz kullanıcı kimliği.';
+    if (g.hata === 'kullanici hala var') return 'kullanıcı hâlâ kayıtlı.';
+    if (g.hata === 'liste' || g.hata === 'veri silinemedi') return 'bulut verisi silinemedi (' + (g.veri_nesnesi || 0) + ' dosya silindi); bir süre sonra tekrar dene.';
+    if (g.hata === 'govde' || g.hata === 'yontem') return 'istek geçersiz.';
+    if (g.code === 'NOT_FOUND' || /function was not found/i.test(g.message || '')) return 'kullanici-sil işlevi henüz yayında değil.';
+    console.warn('[kullanici-sil yanıtı]', g, sh);
+    return 'beklenmeyen bir hata oldu (ayrıntı tarayıcı konsolunda).';
+  }
+
+  $('satirlar').addEventListener('click', async e => {
+    const pr = e.target.closest('button[data-prog],button[data-adminkod]');
+    if (pr) { pr.classList.toggle('acik'); pr.setAttribute('aria-pressed', pr.classList.contains('acik')); return; }
+    const b = e.target.closest('button[data-is]'); if (!b) return;
+    const tr = b.closest('tr'), id = tr.dataset.id;
+    if (b.dataset.is === 'gecmis') return gecmisAc(id);
+    const ptr = $('satirlar').querySelector('tr.prog-satir[data-id="' + id + '"]');
+    if (b.dataset.is === 'yil') { const i = tr.querySelector('[data-alan=bitis]'); i.value = yilEkle(i.value); return; }
+    if (b.dataset.is === 'sil') {
+      const k = liste.find(l => l.user_id === id);
+      if (!confirm(k.eposta + '\n\nBu hesap ve lisansı KALICI olarak silinsin mi? Kişisel kütüphanesi ve bulut program verisi de silinir. Geri alınamaz.')) return;
+      b.disabled = true;
+      // G-0014 §3: Edge Function kullanici-sil (supabase/functions/kullanici-sil/index.ts, verify_jwt açık). Hesabı
+      // kullanici_sil RPC'siyle (yönetici belirteciyle, SQL kuralları geçerli) siler, sonra kullanici-verisi/<uid>/ bulut
+      // verisini Storage API ile siler. Yanıt { silindi, veri_nesnesi } ya da { hata, ayrinti }.
+      const { data: sd, error: sh } = await sb.functions.invoke('kullanici-sil', { body: { hedef: id } });
+      b.disabled = false;
+      if (sh) {
+        let g = {};
+        try { if (sh.context && typeof sh.context.json === 'function') g = await sh.context.json(); } catch (x) {}
+        if (g && g.silindi === true) {   // hesap silindi, bulut verisi yarım kaldı (Storage hatası)
+          liste = liste.filter(l => l.user_id !== id); ciz();
+          return mesaj('Hesap silindi: ' + k.eposta + ' — ancak bulut verisi tam silinemedi (' + (g.veri_nesnesi || 0) + ' dosya silindi). Bir süre sonra tekrar deneyin ya da Supabase panelinden kullanici-verisi/' + id + '/ klasörüne bakın.', 'hata');
+        }
+        return mesaj('Silinemedi: ' + silmeHatasi(g, sh), 'hata');
+      }
+      liste = liste.filter(l => l.user_id !== id);
+      mesaj('Silindi: ' + k.eposta + ' (bulut verisi: ' + ((sd && sd.veri_nesnesi) || 0) + ' dosya)', 'tamam');
+      return ciz();
+    }
+    if (b.dataset.is === 'oturum') {
+      const { error: oh } = await sb.from('lisanslar').update({ aktif_oturum: null }).eq('user_id', id);
+      if (oh) return mesaj('Oturum kapatılamadı: ' + yHata(oh), 'hata');
+      liste.find(l => l.user_id === id).aktif_oturum = null;
+      mesaj('Oturum kapatıldı: ' + liste.find(l => l.user_id === id).eposta + ' — açık programı dakika içinde kilitlenir.', 'tamam');
+      return ciz();
+    }
+    const deg = {
+      aktif:  tr.querySelector('[data-alan=aktif]').checked,
+      demo:   tr.querySelector('[data-alan=demo]').checked,
+      surum:  tr.querySelector('[data-alan=surum]').value,
+      bitis:  tr.querySelector('[data-alan=bitis]').value || null,
+      ad:     tr.querySelector('[data-alan=ad]').value.trim() || null,
+      firma_id: tr.querySelector('[data-alan=firma_id]').value || null
+    };
+    // §2.3: not okunamadıysa notlar GÖNDERİLMEZ — boş kutu kaydedilip var olan not silinmesin
+    const satir = liste.find(l => l.user_id === id);
+    if (NOTLAR_YUKLENDI && satir && satir.notOkundu) deg.notlar = tr.querySelector('[data-alan=notlar]').value.trim() || null;
+    if (ptr && ptr.querySelector('button[data-prog]'))
+      deg.programlar = Array.from(ptr.querySelectorAll('button[data-prog].acik')).map(x => x.dataset.prog);
+    const ak = ptr && ptr.querySelector('button[data-adminkod]');
+    if (ak) deg.admin_kod = ak.classList.contains('acik');
+    b.disabled = true;
+    // G-0014 B1: tetikleyici (lisans_onay_demo) bitişi sunucuda yazar; satır güncellemeden SONRA geri okunur ki bitiş
+    // tabloda hemen görünsün ve sonraki Kaydet bayat (boş) bitişi göndermesin. aktif/demo/bitis/surum 06'dan sonra da
+    // okunabilir (19-lisans-notlari.sql yalnız notlar'ı gizler). .single(): 0 satır (yetki/RLS) sessiz başarı sayılmaz.
+    let yeni = null, error = null;
+    try { ({ data: yeni, error } = await sb.from('lisanslar').update(deg).eq('user_id', id).select('aktif,demo,bitis,surum').single()); }
+    catch (e) { error = e; }
+    finally { b.disabled = false; }
+    if (error) return mesaj('Kaydedilemedi: ' + (error.code === 'PGRST116' ? 'satır güncellenmedi (yetki yok ya da kullanıcı silinmiş); sayfayı yenile.' : yHata(error)), 'hata');
+    Object.assign(liste.find(l => l.user_id === id), deg, yeni || {});
+    mesaj('Kaydedildi: ' + liste.find(l => l.user_id === id).eposta, 'tamam');
+    ciz(); firmaCiz();
+  });
+
+  // --- ETKİNLİK GEÇMİŞİ (13.10.2026): tablo yalnız son girişi gösterir; e-postaya tıklayınca bütün ziyaretler
+  //     (giriş saati, açık/aktif süre, program, cihaz) ve her ziyarette neler yapıldığı
+  const G_SAYFA = 100;
+  let gKim = null, gZiyaretler = [], gSonu = false;
+  function sure(sn){
+    sn = Math.max(0, Math.round(sn || 0));
+    if (sn < 60) return sn + ' sn';
+    const dk = Math.round(sn / 60); if (dk < 60) return dk + ' dk';
+    return Math.floor(dk / 60) + ' sa' + (dk % 60 ? ' ' + (dk % 60) + ' dk' : '');
+  }
+  function saat(s, sn){ return new Date(s).toLocaleTimeString('tr-TR', sn ? { hour:'2-digit', minute:'2-digit', second:'2-digit' } : { hour:'2-digit', minute:'2-digit' }); }
+  function programAdi(p){
+    if (!p) return 'Ana sayfa';
+    const [id, ek] = String(p).split(':'), pr = A.PROGRAMLAR.find(x => x.id === id);
+    return (pr ? pr.ad : id) + (ek === 'sade' ? ' (sade)' : '');
+  }
+  function canli(z){ return Date.now() - new Date(z.son_sinyal).getTime() < 90000; }
+  async function gecmisAc(id){
+    const l = liste.find(x => x.user_id === id); if (!l) return;
+    gKim = id; gZiyaretler = []; gSonu = false;
+    $('g_baslik').textContent = (l.ad ? l.ad + ' · ' : '') + l.eposta;
+    $('g_ozet').textContent = 'Yükleniyor…'; $('g_govde').innerHTML = '';
+    const dl = $('gecmis'); if (!dl.open) dl.showModal();
+    await gecmisYukle();
+  }
+  async function gecmisYukle(){
+    const kim = gKim;
+    const { data, error } = await sb.from('ziyaretler').select('id,baslangic,son_sinyal,aktif_sn,program,cihaz')
+      .eq('user_id', kim).order('baslangic', { ascending: false }).range(gZiyaretler.length, gZiyaretler.length + G_SAYFA - 1);
+    if (kim !== gKim) return;
+    if (error) { $('g_ozet').textContent = 'Okunamadı: ' + yHata(error); return; }
+    gZiyaretler = gZiyaretler.concat(data || []); gSonu = (data || []).length < G_SAYFA;
+    gecmisCiz();
+  }
+  function gecmisCiz(){
+    const l = liste.find(x => x.user_id === gKim) || {};
+    const sinir = Date.now() - 30 * 864e5, son30 = gZiyaretler.filter(z => new Date(z.baslangic).getTime() >= sinir);
+    const prg = {}; son30.forEach(z => { const a = programAdi(z.program); prg[a] = (prg[a] || 0) + (z.aktif_sn || 0); });
+    const toplam = son30.reduce((t, z) => t + (z.aktif_sn || 0), 0);
+    $('g_ozet').innerHTML = 'Son giriş: <b>' + tarihSaat(l.son_giris) + '</b>' +
+      (gZiyaretler.length && canli(gZiyaretler[0]) ? ' · <span class="canli">şu an açık</span>' : '') +
+      '<br>Son 30 gün: <b>' + son30.length + '</b> ziyaret · aktif <b>' + sure(toplam) + '</b>' +
+      (Object.keys(prg).length ? '<br>' + Object.entries(prg).sort((a, b) => b[1] - a[1]).map(([a, s]) => kac(a) + ' <b>' + sure(s) + '</b>').join(' · ') : '') +
+      (gSonu ? '' : '<br><span class="ufak">(özet yüklenen kayıtlardan; daha eskiler için aşağıdan yükle)</span>');
+    if (!gZiyaretler.length) { $('g_govde').innerHTML = '<p class="ufak" style="margin-top:14px">Henüz kayıt yok. Kayıt 13.10.2026 akşamından sonraki girişlerde tutulur.</p>'; return; }
+    let gun = '', h = '';
+    gZiyaretler.forEach(z => {
+      const d = new Date(z.baslangic), g = d.toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+      if (g !== gun) { gun = g; h += '<div class="g-gun">' + kac(g) + '</div>'; }
+      const acikSn = (new Date(z.son_sinyal) - d) / 1000;
+      h += '<div class="g-ziy" data-z="' + z.id + '"><div class="g-ust">' +
+        '<span class="g-saat">' + saat(z.baslangic) + ' – ' + (canli(z) ? '<span class="canli">açık</span>' : saat(z.son_sinyal)) + '</span>' +
+        '<span class="g-prog">' + kac(programAdi(z.program)) + '</span>' +
+        '<span class="g-sure" title="Açık: sayfanın açık kaldığı süre · Aktif: sekme önde ve fare/klavye kullanılırken">açık ' + sure(acikSn) + ' · aktif ' + sure(z.aktif_sn) + '</span>' +
+        '<span class="g-cihaz" title="' + kac(z.cihaz || '') + '">' + kac(cihazAdi(z.cihaz)) + '</span>' +
+        '<button class="baglanti" type="button" data-g="olay">Neler yaptı ▸</button></div></div>';
+    });
+    if (!gSonu) h += '<p style="text-align:center;margin-top:12px"><button class="dugme ikincil kucuk" type="button" data-g="daha">Daha eski kayıtlar</button></p>';
+    $('g_govde').innerHTML = h;
+  }
+  $('g_govde').addEventListener('click', async e => {
+    const b = e.target.closest('button[data-g]'); if (!b) return;
+    if (b.dataset.g === 'daha') { b.disabled = true; return gecmisYukle(); }
+    const kutu = b.closest('.g-ziy'), acik = kutu.querySelector('.g-olaylar');
+    if (acik) { acik.remove(); b.textContent = 'Neler yaptı ▸'; return; }
+    b.disabled = true;
+    const { data, error } = await sb.from('etkinlikler').select('zaman,olay,adet').eq('ziyaret_id', kutu.dataset.z).order('zaman').order('id').limit(3000);
+    b.disabled = false; b.textContent = 'Gizle ▾';
+    const d = document.createElement('div'); d.className = 'g-olaylar';
+    d.innerHTML = error ? '<span class="ufak">Okunamadı: ' + kac(yHata(error)) + '</span>'
+      : (data || []).map(o => '<div class="g-olay"><time>' + saat(o.zaman, true) + '</time><span>' + kac(o.olay) + (o.adet > 1 ? ' <span class="adet">×' + o.adet + '</span>' : '') + '</span></div>').join('')
+        || '<span class="ufak">Bu ziyarette kaydedilen bir işlem yok (yalnız baktı).</span>';
+    kutu.appendChild(d);
+  });
+  $('g_kapat').addEventListener('click', () => $('gecmis').close());
+  $('gecmis').addEventListener('click', e => { if (e.target === $('gecmis')) $('gecmis').close(); });   // dışına tıklayınca kapanır
+  $('gecmis').addEventListener('close', () => { gKim = null; });
+
+  // --- firmalar (ortak santral kütüphanesi)
+  function firmaSecenek(secili){
+    return '<option value="">— Firma yok —</option>' + firmalar.map(f => '<option value="' + f.id + '"' + (f.id === secili ? ' selected' : '') + '>' + kac(f.ad) + '</option>').join('');
+  }
+  function firmaCiz(){
+    $('firma_say').textContent = firmalar.length + ' firma';
+    $('firma_satirlar').innerHTML = firmalar.map(f => {
+      const uye = liste.filter(l => l.firma_id === f.id);
+      return '<tr data-firma="' + f.id + '"><td><input data-alan="firma_ad" value="' + kac(f.ad) + '" maxlength="120" style="min-width:200px"></td>' +
+        '<td class="ufak">' + (uye.length ? uye.map(l => kac(l.ad || l.eposta)).join(', ') : '—') + '</td>' +
+        '<td style="white-space:nowrap"><button class="dugme kucuk" data-firma-is="kaydet" type="button">Kaydet</button> ' +
+        '<button class="dugme ikincil kucuk" data-firma-is="sil" type="button">Sil</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="ufak">Henüz firma yok.</td></tr>';
+  }
+  $('firma_ekle').addEventListener('click', async () => {
+    const ad = $('firma_yeni').value.trim();
+    if (!ad) { $('firma_yeni').focus(); return; }
+    const { data, error } = await sb.from('firmalar').insert({ ad }).select('id,ad,olusturma').single();
+    if (error) return mesaj(tekilMi(error) ? 'Bu adla bir firma zaten var.' : 'Firma eklenemedi: ' + yHata(error), 'hata');
+    firmalar.push(data); firmalar.sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+    $('firma_yeni').value = '';
+    mesaj('Firma eklendi: ' + data.ad + ' — kullanıcıları yukarıdaki tablodan ata.', 'tamam');
+    ciz(); firmaCiz();
+  });
+  $('firma_yeni').addEventListener('keydown', e => { if (e.key === 'Enter') $('firma_ekle').click(); });
+  $('firma_satirlar').addEventListener('click', async e => {
+    const b = e.target.closest('button[data-firma-is]'); if (!b) return;
+    const tr = b.closest('tr'), id = tr.dataset.firma, f = firmalar.find(x => x.id === id);
+    if (!f) return;
+    if (b.dataset.firmaIs === 'kaydet') {
+      const ad = tr.querySelector('[data-alan=firma_ad]').value.trim();
+      if (!ad) return mesaj('Firma adı boş olamaz.', 'hata');
+      const { error } = await sb.from('firmalar').update({ ad }).eq('id', id);
+      if (error) return mesaj(tekilMi(error) ? 'Bu adla bir firma zaten var.' : 'Firma kaydedilemedi: ' + yHata(error), 'hata');
+      f.ad = ad; firmalar.sort((a, c) => a.ad.localeCompare(c.ad, 'tr'));
+      mesaj('Firma adı kaydedildi: ' + ad, 'tamam'); ciz(); firmaCiz();
+    } else {
+      const uye = liste.filter(l => l.firma_id === id).length;
+      if (!confirm('«' + f.ad + '» silinsin mi?\n\n' + (uye ? uye + ' kullanıcı firmasız kalır. ' : '') + 'Firmanın ORTAK SANTRAL KÜTÜPHANESİ (bütün klasör ve santraller) KALICI olarak silinir.')) return;
+      const { error } = await sb.from('firmalar').delete().eq('id', id);
+      if (error) return mesaj('Firma silinemedi: ' + yHata(error), 'hata');
+      firmalar = firmalar.filter(x => x.id !== id);
+      liste.forEach(l => { if (l.firma_id === id) l.firma_id = null; });
+      mesaj('Firma silindi: ' + f.ad, 'tamam'); ciz(); firmaCiz();
+    }
+  });
+
+  // --- program dosyaları (özel kova)
+  const DOSYA_ACIKLAMA = {
+    tam:  ['Tam sürüm', 'Pro kullanıcılar ve yönetici açar'],
+    sade: ['Sade sürüm', 'Normal kullanıcılar açar (gizli imalat modu yok)']
+  };
+  async function dosyalariCiz(){
+    const { data } = await sb.storage.from(A.KOVA).list('', { limit: 100 });
+    const bilgi = {}; (data || []).forEach(f => bilgi[f.name] = f);
+    $('dosyalar').innerHTML = Object.keys(A.DOSYALAR).map(k => {
+      const ad = A.DOSYALAR[k], f = bilgi[ad];
+      const durumMetni = f ? (Math.round((f.metadata && f.metadata.size || 0) / 1024) + ' KB · ' + tarihSaat(f.updated_at || f.created_at)) : 'Henüz yüklenmedi';
+      return '<div class="dosya"><b>' + DOSYA_ACIKLAMA[k][0] + ' <span class="ufak" style="display:inline">(' + ad + ')</span></b>' +
+        '<span class="ufak">' + DOSYA_ACIKLAMA[k][1] + '<br>' + durumMetni + '</span>' +
+        '<input type="file" accept=".html,text/html" data-dosya="' + ad + '">' +
+        '<button class="dugme kucuk" data-yukle="' + ad + '" type="button" style="margin-top:8px">Yükle / güncelle</button></div>';
+    }).join('');
+  }
+  $('dosyalar').addEventListener('click', async e => {
+    const b = e.target.closest('button[data-yukle]'); if (!b) return;
+    const ad = b.dataset.yukle, girdi = document.querySelector('input[data-dosya="' + ad + '"]');
+    const f = girdi.files[0];
+    if (!f) return mesaj('Önce bir dosya seç.', 'hata');
+    if (f.name !== ad && !confirm('Seçilen dosyanın adı "' + f.name + '". "' + ad + '" olarak yüklensin mi?')) return;
+    b.disabled = true; b.textContent = 'Yükleniyor…';
+    // kovada sıkıştırılmış saklanır (kota); yükleyici (index.html) ilk baytlardan tanıyıp çözer
+    let govde = f;
+    try { govde = await new Response(f.stream().pipeThrough(new CompressionStream('gzip'))).blob(); } catch (h) { govde = f; }
+    const { error } = await sb.storage.from(A.KOVA).upload(ad, govde, { upsert: true, contentType: 'text/html; charset=utf-8', cacheControl: '0' });
+    b.disabled = false; b.textContent = 'Yükle / güncelle';
+    if (error) return mesaj('Yüklenemedi: ' + yHata(error), 'hata');
+    mesaj(ad + ' yüklendi. Kullanıcılar bir sonraki açılışta yeni sürümü alır.', 'tamam');
+    dosyalariCiz();
+  });
+})();

@@ -50,7 +50,10 @@ window.AHU_AYAR = {
     // 08.11.2026 — Makine Hesap Defteri (G-0020)
     { id: 'makine', renk: '#e8590c', ad: 'Makine Hesap Defteri', aciklama: 'Makine mühendisliği lisans müfredatındaki hesaplar: statik, mukavemet, dinamik, titreşim, termodinamik, akışkanlar, sayısal yöntemler.', dosyalar: { tek: 'araclar/makine-hesap-defteri.html' } },
     // 09.11.2026 — Rooftop Hesap Sihirbazı
-    { id: 'rooftop', renk: '#fa5252', ad: 'Rooftop Hesap Sihirbazı', aciklama: 'Adım adım rooftop hesabı: karışım havası, Friterm PDF çıktısından evaporatör ve kondenser kontrolü, kompresör dengesi, ısı pompası, fanlar, hatlar ve rapor.', dosyalar: { tek: 'araclar/rooftop-hesap-sihirbazi.html' } }
+    { id: 'rooftop', renk: '#fa5252', ad: 'Rooftop Hesap Sihirbazı', aciklama: 'Adım adım rooftop hesabı: karışım havası, Friterm PDF çıktısından evaporatör ve kondenser kontrolü, kompresör dengesi, ısı pompası, fanlar, hatlar ve rapor.', dosyalar: { tek: 'araclar/rooftop-hesap-sihirbazi.html' } },
+    // 18.11.2026 — Batarya Seçim Programı ve Batarya Fiyat Tahmini
+    { id: 'bsecim', renk: '#748ffc', ad: 'Batarya Seçim Programı', aciklama: 'Lamelli borulu batarya hesabı ve seçimi: su / glikol, DX evaporatör ve kondenser, buharlı ısıtıcı; toplu seçim, maliyet, kalibrasyon ve rapor.', dosyalar: { tek: 'araclar/batarya-secim-programi.html' } },
+    { id: 'bfiyat', renk: '#f59f00', ad: 'Batarya Fiyat Tahmini', aciklama: 'Friterm seçim çıktısını bırakın: Friterm, ThermoWay ve AC Tech tekliflerini, malzeme dökümünü ve birim fiyatları tahmin eder.', dosyalar: { tek: 'araclar/batarya-fiyat-tahmini.html' } }
   ]
 };
 // Eski adla okuyan kod için (yönetim sayfasının dosya listesi)

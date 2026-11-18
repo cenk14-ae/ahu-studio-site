@@ -118,3 +118,9 @@ on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
 insert into public.programlar (id, ad, dosyalar) values
   ('rooftop', 'Rooftop Hesap Sihirbazı', '{araclar/rooftop-hesap-sihirbazi.html}')
 on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
+
+-- 14) 18.11.2026 — Batarya Seçim Programı ve Batarya Fiyat Tahmini
+insert into public.programlar (id, ad, dosyalar) values
+  ('bsecim', 'Batarya Seçim Programı', '{araclar/batarya-secim-programi.html}'),
+  ('bfiyat', 'Batarya Fiyat Tahmini',  '{araclar/batarya-fiyat-tahmini.html}')
+on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;

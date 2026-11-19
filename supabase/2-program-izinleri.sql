@@ -124,3 +124,8 @@ insert into public.programlar (id, ad, dosyalar) values
   ('bsecim', 'Batarya Seçim Programı', '{araclar/batarya-secim-programi.html}'),
   ('bfiyat', 'Batarya Fiyat Tahmini',  '{araclar/batarya-fiyat-tahmini.html}')
 on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
+
+-- 15) 19.11.2026 — Kaynak Çarpılma Simülatörü (STEP → dikiş, ısı/HAZ, çarpılma, mastar, WPS/PQR, kaynak haritası)
+insert into public.programlar (id, ad, dosyalar) values
+  ('carpilma', 'Kaynak Çarpılma Simülatörü', '{araclar/kaynak-carpilma-simulatoru.html}')
+on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;

@@ -53,7 +53,9 @@ window.AHU_AYAR = {
     { id: 'rooftop', renk: '#fa5252', ad: 'Rooftop Hesap Sihirbazı', aciklama: 'Adım adım rooftop hesabı: karışım havası, Friterm PDF çıktısından evaporatör ve kondenser kontrolü, kompresör dengesi, ısı pompası, fanlar, hatlar ve rapor.', dosyalar: { tek: 'araclar/rooftop-hesap-sihirbazi.html' } },
     // 18.11.2026 — Batarya Seçim Programı ve Batarya Fiyat Tahmini
     { id: 'bsecim', renk: '#748ffc', ad: 'Batarya Seçim Programı', aciklama: 'Lamelli borulu batarya hesabı ve seçimi: su / glikol, DX evaporatör ve kondenser, buharlı ısıtıcı; toplu seçim, maliyet, kalibrasyon ve rapor.', dosyalar: { tek: 'araclar/batarya-secim-programi.html' } },
-    { id: 'bfiyat', renk: '#f59f00', ad: 'Batarya Fiyat Tahmini', aciklama: 'Friterm seçim çıktısını bırakın: Friterm, ThermoWay ve AC Tech tekliflerini, malzeme dökümünü ve birim fiyatları tahmin eder.', dosyalar: { tek: 'araclar/batarya-fiyat-tahmini.html' } }
+    { id: 'bfiyat', renk: '#f59f00', ad: 'Batarya Fiyat Tahmini', aciklama: 'Friterm seçim çıktısını bırakın: Friterm, ThermoWay ve AC Tech tekliflerini, malzeme dökümünü ve birim fiyatları tahmin eder.', dosyalar: { tek: 'araclar/batarya-fiyat-tahmini.html' } },
+    // 19.11.2026 — Kaynak Çarpılma Simülatörü (Cenk: «yeni program var sitemize ekleyeceğimiz»)
+    { id: 'carpilma', renk: '#ff922b', ad: 'Kaynak Çarpılma Simülatörü', aciklama: 'STEP parçasından dikişleri bulur: ısı ve HAZ, 3B çarpılma, mastar (3-2-1 dayama, kelepçe), WPS / PQR, kaynak haritası ve rapor.', dosyalar: { tek: 'araclar/kaynak-carpilma-simulatoru.html' } }
   ]
 };
 // Eski adla okuyan kod için (yönetim sayfasının dosya listesi)

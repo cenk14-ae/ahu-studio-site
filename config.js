@@ -55,7 +55,9 @@ window.AHU_AYAR = {
     { id: 'bsecim', renk: '#748ffc', ad: 'Batarya Seçim Programı', aciklama: 'Lamelli borulu batarya hesabı ve seçimi: su / glikol, DX evaporatör ve kondenser, buharlı ısıtıcı; toplu seçim, maliyet, kalibrasyon ve rapor.', dosyalar: { tek: 'araclar/batarya-secim-programi.html' } },
     { id: 'bfiyat', renk: '#f59f00', ad: 'Batarya Fiyat Tahmini', aciklama: 'Friterm seçim çıktısını bırakın: Friterm, ThermoWay ve AC Tech tekliflerini, malzeme dökümünü ve birim fiyatları tahmin eder.', dosyalar: { tek: 'araclar/batarya-fiyat-tahmini.html' } },
     // 19.11.2026 — Kaynak Çarpılma Simülatörü (Cenk: «yeni program var sitemize ekleyeceğimiz»)
-    { id: 'carpilma', renk: '#ff922b', ad: 'Kaynak Çarpılma Simülatörü', aciklama: 'STEP parçasından dikişleri bulur: ısı ve HAZ, 3B çarpılma, mastar (3-2-1 dayama, kelepçe), WPS / PQR, kaynak haritası ve rapor.', dosyalar: { tek: 'araclar/kaynak-carpilma-simulatoru.html' } }
+    { id: 'carpilma', renk: '#ff922b', ad: 'Kaynak Çarpılma Simülatörü', aciklama: 'STEP parçasından dikişleri bulur: ısı ve HAZ, 3B çarpılma, mastar (3-2-1 dayama, kelepçe), WPS / PQR, kaynak haritası ve rapor.', dosyalar: { tek: 'araclar/kaynak-carpilma-simulatoru.html' } },
+    // 20.11.2026 — DXF Kulak Tıraşla (Cenk: «köşelerinde kulak gibi uzantılar var, bunu otomatik yapacak program lazım» · «ayrı kart olsun»)
+    { id: 'kulak', renk: '#e599f7', ad: 'DXF Kulak Tıraşla', aciklama: 'Birleşik DXF’leri bırakın: parça köşelerinde çentikten taşan kulakları bulur, çentiği düz L basamağına çevirir; önce / sonra görünümü ve tıraşlı DXF.', dosyalar: { tek: 'araclar/kulak-tirasla.html' } }
   ]
 };
 // Eski adla okuyan kod için (yönetim sayfasının dosya listesi)

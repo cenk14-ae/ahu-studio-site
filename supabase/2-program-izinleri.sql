@@ -129,3 +129,8 @@ on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
 insert into public.programlar (id, ad, dosyalar) values
   ('carpilma', 'Kaynak Çarpılma Simülatörü', '{araclar/kaynak-carpilma-simulatoru.html}')
 on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
+
+-- 16) 20.11.2026 — DXF Kulak Tıraşla (birleşik DXF parça köşelerindeki çentikten taşan kulakları keser)
+insert into public.programlar (id, ad, dosyalar) values
+  ('kulak', 'DXF Kulak Tıraşla', '{araclar/kulak-tirasla.html}')
+on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;

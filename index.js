@@ -806,9 +806,12 @@
       const href = '?ac=' + encodeURIComponent(p.id) + (surumler.length > 1 ? '&surum=' + surumler[0] : '');
       const diger = surumler.slice(1).map(s => '<span class="pkart-surum" role="link" tabindex="0" data-href="?ac=' + encodeURIComponent(p.id) + '&surum=' + s + '">' +
         (s === 'sade' ? 'sade sürüm' : kac(s)) + ' →</span>').join('');
-      return '<a class="pkart pkart-tik" data-id="' + kac(p.id) + '" href="' + href + '" style="--pr:' + kac(p.renk || '#4d8dff') + '">' + diger + ikonHtml(p) + '<b>' + kac(p.ad) + '</b>' +
+      return '<a class="pkart pkart-tik" data-id="' + kac(p.id) + '" href="' + href + '" style="--pr:' + kac(p.renk || '#4d8dff') + '">' + diger +
+        '<span class="pkart-yildiz" role="button" tabindex="-1" aria-pressed="false" title="Favorilere ekle / çıkar">☆</span>' + ikonHtml(p) + '<b>' + kac(p.ad) + '</b>' +
         '<span class="ufak">' + kac(p.aciklama || '') + '</span></a>';
     }).join('');
+    FAV.liste = favOku(oturum);
+    favCiz();
   }
   // Kartın köşesindeki öteki sürüm bağlantısı: kartın kendi tıklamasını durdurup kendi adresine gider
   $('ana_programlar').addEventListener('click', e => {
@@ -864,12 +867,58 @@
   function duzenModu(ac){
     const kap = $('ana_programlar');
     kap.classList.toggle('duzen', ac);
-    $('sira_dugme').textContent = ac ? 'Bitti' : 'Sırayı düzenle';
+    $('sira_dugme').textContent = ac ? 'Bitti' : 'Düzenle';
     $('sira_dugme').classList.toggle('acik', ac);
     $('sira_ipucu').hidden = !ac;
     $('sira_sifirla').hidden = !ac;
+    favCiz();
   }
   $('sira_dugme').addEventListener('click', () => duzenModu(!$('ana_programlar').classList.contains('duzen')));
+
+  // FAVORİLER — 20.11.2026, Cenk: «sitedeki kartların hepsini görmeme gerek yok, bana özel favoriler özelliği ekle,
+  // hepsini birden görmeyebileyim, ben sitede favorilerimi seçerim». Var olan düzen kipine eklendi: «Düzenle»de her
+  // kartın köşesinde ☆; seçilenler favori. Normal görünümde favori varsa yalnız onlar görünür, «Tümü (N)» ile hepsi.
+  // Favoriler sıra gibi hesabın user_metadata'sında (kart_favori) → her cihazda aynı; localStorage hızlı önbellek.
+  const FAV = { liste: [], hepsi: false };
+  const favAnahtar = () => 'ahu_kart_favori:' + SIRA.oturum.user.id;
+  const hepsiAnahtar = () => 'ahu_kart_hepsi:' + SIRA.oturum.user.id;
+  function favOku(oturum){
+    try { FAV.hepsi = localStorage.getItem('ahu_kart_hepsi:' + oturum.user.id) === '1'; } catch (e) {}
+    const m = oturum.user.user_metadata && oturum.user.user_metadata.kart_favori;
+    if (Array.isArray(m)) return m;
+    try { const s = JSON.parse(localStorage.getItem('ahu_kart_favori:' + oturum.user.id)); if (Array.isArray(s)) return s; } catch (e) {}
+    return [];
+  }
+  function favKaydet(){
+    const L = FAV.liste.length ? FAV.liste : null;
+    try { if (L) localStorage.setItem(favAnahtar(), JSON.stringify(L)); else localStorage.removeItem(favAnahtar()); } catch (e) {}
+    sb.auth.updateUser({ data: { kart_favori: L } }).then(function(){}, function(){});
+  }
+  function favCiz(){
+    const duzen = $('ana_programlar').classList.contains('duzen'), K = kartlar();
+    const favSay = K.filter(k => FAV.liste.indexOf(k.dataset.id) >= 0).length;
+    const suz = favSay > 0 && !FAV.hepsi && !duzen;
+    K.forEach(k => {
+      const f = FAV.liste.indexOf(k.dataset.id) >= 0, y = k.querySelector('.pkart-yildiz');
+      k.classList.toggle('favori', f);
+      k.classList.toggle('fav-gizli', suz && !f);
+      if (y) { y.textContent = f ? '★' : '☆'; y.setAttribute('aria-pressed', f ? 'true' : 'false'); }
+    });
+    const d = $('fav_dugme');
+    d.hidden = duzen || !favSay;
+    d.textContent = FAV.hepsi ? '★ Yalnız favoriler' : 'Tümü (' + K.length + ')';
+    $('ana_programlar_baslik').textContent = suz ? 'Favorilerim' : 'Programlar';
+  }
+  function favDegistir(k){
+    const id = k.dataset.id, i = FAV.liste.indexOf(id);
+    if (i >= 0) FAV.liste.splice(i, 1); else FAV.liste.push(id);
+    favCiz(); favKaydet();
+  }
+  $('fav_dugme').addEventListener('click', () => {
+    FAV.hepsi = !FAV.hepsi;
+    try { if (FAV.hepsi) localStorage.setItem(hepsiAnahtar(), '1'); else localStorage.removeItem(hepsiAnahtar()); } catch (e) {}
+    favCiz();
+  });
   $('sira_sifirla').addEventListener('click', () => {
     const kap = $('ana_programlar');
     const bul = new Map(kartlar().map(k => [k.dataset.id, k]));
@@ -878,7 +927,10 @@
   });
   // Düzen kipinde kart açılmaz (öteki sürüm bağlantısı da)
   $('ana_programlar').addEventListener('click', e => {
-    if ($('ana_programlar').classList.contains('duzen')) { e.preventDefault(); e.stopPropagation(); }
+    if (!$('ana_programlar').classList.contains('duzen')) return;
+    e.preventDefault(); e.stopPropagation();
+    const y = e.target.closest && e.target.closest('.pkart-yildiz');
+    if (y) favDegistir(y.closest('.pkart[data-id]'));
   }, true);
   // Sürükleme: fare + dokunma (pointer olayları). Tutulan kart parmağı izler; altına geldiği kartın yerine geçer.
   // Hedef, kartların KAYAN görüntüsüne değil yerleşim yuvalarına (offset) göre seçilir; parmak yuvanın iç
@@ -892,7 +944,7 @@
   $('ana_programlar').addEventListener('pointerdown', e => {
     const kap = $('ana_programlar');
     const k = kap.classList.contains('duzen') && e.target.closest('.pkart[data-id]');
-    if (!k || e.button > 0) return;
+    if (!k || e.button > 0 || e.target.closest('.pkart-yildiz')) return;   // yıldıza basmak sürükleme başlatmaz
     e.preventDefault();
     const y = yuva(k);
     tut = { k, px: e.clientX, py: e.clientY, dx: e.clientX - y.x, dy: e.clientY - y.y, ilk: siraSimdi().join(), kilit: 0,
@@ -947,7 +999,7 @@
     const k = e.target.closest('.pkart[data-id]');
     if (!k) return;
     const geri = e.key === 'ArrowLeft' || e.key === 'ArrowUp', ileri = e.key === 'ArrowRight' || e.key === 'ArrowDown';
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); return; }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); favDegistir(k); k.focus(); return; }   // düzen kipinde Enter/Boşluk: favori
     if (!geri && !ileri) return;
     e.preventDefault();
     const komsu = geri ? k.previousElementSibling : k.nextElementSibling;

@@ -20,7 +20,7 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="stil.css?v=20261013">
+<link rel="stylesheet" href="stil.css?v=20261120a">
 <style>
   #menu{position:fixed;right:12px;bottom:12px;z-index:6;display:flex;gap:6px;opacity:.35;transition:opacity .15s}
   #menu:hover,#menu:focus-within{opacity:1}
@@ -256,11 +256,12 @@
   </div>
   <main>
     <div class="ana-baslik-satir">
-      <h2 class="ana-baslik">Programlar</h2>
-      <span class="sira-ipucu" id="sira_ipucu" hidden>Kartları sürükleyerek yerleştir</span>
+      <h2 class="ana-baslik" id="ana_programlar_baslik">Programlar</h2>
+      <span class="sira-ipucu" id="sira_ipucu" hidden>Sürükleyerek yerleştir · ☆ ile favori seç</span>
       <span class="bosluk"></span>
       <button type="button" class="sira-dugme" id="sira_sifirla" hidden>Varsayılan sıra</button>
-      <button type="button" class="sira-dugme" id="sira_dugme" hidden>Sırayı düzenle</button>
+      <button type="button" class="sira-dugme" id="fav_dugme" hidden>Tümü</button>
+      <button type="button" class="sira-dugme" id="sira_dugme" hidden>Düzenle</button>
     </div>
     <div class="kartlar" id="ana_programlar"></div>
     <h2 class="ana-baslik">Yönetim</h2>
@@ -312,7 +313,7 @@
 <script src="qr-kod.js?v=20261112a"></script>
 <script src="qr-giris.js?v=20261112a"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
-<script src="index.js?v=20261112a"></script>
+<script src="index.js?v=20261120a"></script>
 <script src="index-tanitim.js?v=20261108a"></script>
 </body>
 </html>

@@ -8,7 +8,7 @@
      yüklenemez). style-src 'unsafe-inline': style="" öznitelikleri ve kutuphane.js'in <style> öğesi (betik güvenliğini etkilemez).
      Programlar blob çerçevede bu politikayı DEVRALMASIN diye blob'u program-acici.html oluşturur (index.js → programAcici).
      frame-ancestors / report-uri meta ile verilemez (GitHub Pages başlık veremez; tıklama tuzağına karşı cerceve-kalkan.js). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self'; connect-src 'self' https://eqekvkfbysjzueywfiya.supabase.co wss://eqekvkfbysjzueywfiya.supabase.co; frame-src 'self' blob: https://challenges.cloudflare.com; child-src 'self' blob: https://challenges.cloudflare.com; worker-src 'none'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; media-src 'self'; connect-src 'self' https://eqekvkfbysjzueywfiya.supabase.co wss://eqekvkfbysjzueywfiya.supabase.co; frame-src 'self' blob: https://challenges.cloudflare.com; child-src 'self' blob: https://challenges.cloudflare.com; worker-src 'none'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <!-- SAYFA KORUMASI: başka bir site bu sayfayı çerçeve içine alamaz (tıklama tuzağı). Pages güvenlik başlığı
      veremediği için JS ile: çerçevedeyse görünmez kalır ve kendi adresine kaçar. -->
 <style id="cerceve-kalkan">html{display:none!important}</style>
@@ -18,9 +18,7 @@
 <title>ALTINAY</title>
 <meta name="description" content="Klima santrali kapak yerleşimi, DXF ve Excel üretimi">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="stil.css?v=20261120a">
+<link rel="stylesheet" href="stil.css?v=20261124a">
 <style>
   #menu{position:fixed;right:12px;bottom:12px;z-index:6;display:flex;gap:6px;opacity:.35;transition:opacity .15s}
   #menu:hover,#menu:focus-within{opacity:1}
@@ -33,10 +31,10 @@
   .yukleniyor{display:flex;align-items:center;gap:10px;color:var(--t-2);font-size:13px;margin-top:18px}
   .yukleniyor i{width:16px;height:16px;border:2px solid var(--line-3);border-top-color:var(--accent);border-radius:50%;animation:don .8s linear infinite}
   @keyframes don{to{transform:rotate(360deg)}}
-  #basvuru_modal,#sifre_modal{position:fixed;inset:0;z-index:70;display:flex;padding:16px;overflow:auto;
+  #basvuru_modal,#sifre_modal,#kosul_modal{position:fixed;inset:0;z-index:70;display:flex;padding:16px;overflow:auto;
     background:rgba(4,6,12,.78);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-  #basvuru_modal[hidden],#sifre_modal[hidden]{display:none}
-  #basvuru_modal .kart,#sifre_modal .kart{max-width:420px;margin:auto}
+  #basvuru_modal[hidden],#sifre_modal[hidden],#kosul_modal[hidden]{display:none}
+  #basvuru_modal .kart,#sifre_modal .kart,#kosul_modal .kart{max-width:420px;margin:auto}
   #basvuru_modal textarea{resize:vertical}
   .bv-ust{display:flex;align-items:center;justify-content:space-between;gap:8px}
   .bv-ust h1{margin:0 0 4px}
@@ -97,6 +95,13 @@
         <div id="sifre_tekrar_alan" hidden>
           <label for="sifre2">Şifre (tekrar)</label>
           <input id="sifre2" type="password" autocomplete="new-password" minlength="10" maxlength="72">
+        </div>
+        <!-- 24.11.2026 — KVKK + KULLANIM KOŞULLARI (Cenk: «başkasının bilgilerini girip kayıt olmasını da engellememiz lazım»;
+             yalnız 18 yaş ve üstü). İki kutu zorunlu; sunucu da denetler (supabase/22-kvkk-onay.sql kayit_onay_denetle). -->
+        <div id="kayit_onay" class="onay-kutulari" hidden>
+          <label class="onay"><input type="checkbox" id="onay_kosul"> <span><a href="kosullar.html" target="_blank" rel="noopener">Kullanım Koşulları</a>'nı okudum, kabul ediyorum ve <strong>18 yaşından büyüğüm</strong>.</span></label>
+          <label class="onay"><input type="checkbox" id="onay_kimlik"> <span>Girdiğim ad soyad, firma ve e-posta bilgilerinin <strong>bana ait</strong> olduğunu, başka bir kişi adına kayıt olmadığımı beyan ederim.</span></label>
+          <p class="onay-not">Kişisel verilerin <a href="kvkk.html" target="_blank" rel="noopener">Aydınlatma Metni</a> kapsamında işlenir.</p>
         </div>
         <div id="captcha" class="captcha"></div>
         <button class="dugme tam" id="gonder" type="submit">Giriş yap</button>
@@ -169,6 +174,8 @@
     </div>
     <!-- İLETİŞİM (09.10.2026) — adres sayfa kaynağında düz yazılmaz (e-posta toplayan botlar), JS birleştirir -->
     <p class="iletisim">İletişim: <a id="iletisim_posta" href="#">—</a></p>
+    <!-- 24.11.2026 — yasal bağlantılar (KVKK aydınlatma, çerez, koşullar) -->
+    <p class="yasal-baglar"><a href="kvkk.html">Aydınlatma Metni</a> · <a href="cerez.html">Çerez Politikası</a> · <a href="kosullar.html">Kullanım Koşulları</a></p>
   </div>
 
   <!-- TANITIM VİDEOLARI (09.10.2026) — tıklanınca büyür; video yalnız tıklanınca iner (preload yok) -->
@@ -224,6 +231,7 @@
         <button class="dugme ikincil" id="bv_kod_gonder" type="button">Kod gönder</button>
       </div>
     </div>
+    <p class="onay-not">Başvuru bilgilerin <a href="kvkk.html" target="_blank" rel="noopener">Aydınlatma Metni</a> kapsamında işlenir.</p>
     <button class="dugme tam" id="bv_gonder" type="submit">Başvuruyu gönder</button>
     <div class="mesaj" id="bv_mesaj" role="status"></div>
   </form>
@@ -242,6 +250,22 @@
     <input id="sd_tekrar" type="password" autocomplete="new-password" required minlength="10" maxlength="72">
     <button class="dugme tam" id="sd_gonder" type="submit">Şifreyi değiştir</button>
     <div class="mesaj" id="sd_mesaj" role="status"></div>
+  </form>
+</div>
+
+<!-- KOŞUL ONAYI (24.11.2026) — koşulları bu sürümde kabul etmemiş hesap (eski hesaplar, koşullar değişince) girişte
+     bir kez onaylar; onaylanmadan programlara geçilmez (index.js kosulTamam, supabase/22-kvkk-onay.sql kosul_onayla) -->
+<div id="kosul_modal" hidden role="dialog" aria-modal="true" aria-labelledby="ko_baslik">
+  <form class="kart" id="ko_form">
+    <h1 id="ko_baslik">Koşullar güncellendi</h1>
+    <p class="aciklama">Devam etmek için güncel <a href="kosullar.html" target="_blank" rel="noopener">Kullanım Koşulları</a>'nı onayla. Kişisel verilerinin nasıl işlendiği <a href="kvkk.html" target="_blank" rel="noopener">Aydınlatma Metni</a>'nde.</p>
+    <div class="onay-kutulari">
+      <label class="onay"><input type="checkbox" id="ko_kosul"> <span>Kullanım Koşulları'nı okudum, kabul ediyorum ve <strong>18 yaşından büyüğüm</strong>.</span></label>
+      <label class="onay"><input type="checkbox" id="ko_kimlik"> <span>Hesaptaki ad soyad, firma ve e-posta bilgilerinin <strong>bana ait</strong> olduğunu beyan ederim.</span></label>
+    </div>
+    <button class="dugme tam" id="ko_gonder" type="submit">Onayla ve devam et</button>
+    <p class="alt-not"><button class="baglanti" id="ko_cikis" type="button">Çıkış</button></p>
+    <div class="mesaj" id="ko_mesaj" role="status"></div>
   </form>
 </div>
 
@@ -313,7 +337,8 @@
 <script src="qr-kod.js?v=20261112a"></script>
 <script src="qr-giris.js?v=20261112a"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
-<script src="index.js?v=20261120a"></script>
+<script src="index.js?v=20261124a"></script>
+<script src="cerez-bildirimi.js?v=20261124a"></script>
 <script src="index-tanitim.js?v=20261108a"></script>
 </body>
 </html>

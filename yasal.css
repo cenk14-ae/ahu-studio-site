@@ -1,0 +1,22 @@
+/* Yasal sayfalar (kvkk.html, cerez.html, kosullar.html) — 24.11.2026. stil.css'in renk/yazı tipi değişkenlerini kullanır. */
+body{height:auto;min-height:100%;line-height:1.6}
+.yasal{max-width:820px;margin:0 auto;padding:40px 20px 80px}
+.yasal header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:28px}
+.yasal header a{color:var(--t-2);text-decoration:none;font-size:13px}
+.yasal header a:hover{color:var(--t-1)}
+.yasal .marka{font-weight:600;letter-spacing:.06em}
+.yasal h1{font-size:24px;font-weight:600;margin-bottom:6px}
+.yasal .surum{color:var(--t-3);font-size:12px;margin-bottom:24px}
+.yasal h2{font-size:16px;font-weight:600;margin:28px 0 8px;color:var(--t-1)}
+.yasal p,.yasal li{color:var(--t-2);font-size:14px}
+.yasal p+p{margin-top:8px}
+.yasal ul,.yasal ol{padding-left:22px;margin:6px 0}
+.yasal li+li{margin-top:4px}
+.yasal strong{color:var(--t-1);font-weight:600}
+.yasal a{color:var(--accent-2)}
+.yasal table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+.yasal th,.yasal td{border:1px solid var(--line-2);padding:7px 9px;text-align:left;vertical-align:top;color:var(--t-2)}
+.yasal th{background:var(--bg-2);color:var(--t-1);font-weight:600}
+.yasal .tablo{overflow-x:auto}
+.yasal code{font-size:12px;background:var(--bg-2);padding:1px 5px;border-radius:4px}
+.yasal nav.diger{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);font-size:13px;display:flex;gap:16px;flex-wrap:wrap}

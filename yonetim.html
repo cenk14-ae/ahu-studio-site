@@ -5,7 +5,7 @@
 <!-- İÇERİK GÜVENLİK POLİTİKASI (G-0016, S11). Kaynak: W3C CSP Level 3; MDN «Content-Security-Policy». Satır içi betik YOK
      (yonetim.js, cerceve-kalkan.js). Bu sayfa program açmaz, Turnstile kullanmaz → çerçeve izni yok. img-src data: MFA QR görseli için.
      style-src 'unsafe-inline': style="" öznitelikleri (betik güvenliğini etkilemez). frame-ancestors meta ile verilemez. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://eqekvkfbysjzueywfiya.supabase.co wss://eqekvkfbysjzueywfiya.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src https://eqekvkfbysjzueywfiya.supabase.co wss://eqekvkfbysjzueywfiya.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'">
 <!-- SAYFA KORUMASI: başka bir site bu sayfayı çerçeve içine alamaz (tıklama tuzağı). Pages güvenlik başlığı
      veremediği için JS ile: çerçevedeyse görünmez kalır ve kendi adresine kaçar. -->
 <style id="cerceve-kalkan">html{display:none!important}</style>
@@ -15,9 +15,7 @@
 <title>ALTINAY · Yönetim</title>
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="stil.css?v=20261009b">
+<link rel="stylesheet" href="stil.css?v=20261124a">
 <style>
   /* ETKİNLİK GEÇMİŞİ (13.10.2026): e-postaya tıklayınca açılan pencere */
   button.eposta{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:left;text-decoration:underline dotted var(--t-3);text-underline-offset:3px}

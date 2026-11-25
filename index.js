@@ -97,6 +97,8 @@
   // G-0014 S7 (CWE-209; OWASP Error Handling Cheat Sheet): tanınmayan sunucu iletisi kullanıcıya HAM gösterilmez —
   // genel Türkçe ileti gösterilir, ayrıntı yalnız konsola yazılır (console.warn). Geçen kendi iletilerimiz:
   // trHata() ile atılanlar ve SQL fonksiyonlarımızın `raise exception` iletileri (PostgreSQL SQLSTATE P0001, Türkçe).
+  // 24.11.2026 — kosullar.html / kvkk.html sürümü; supabase/22-kvkk-onay.sql kosul_surumu() ile AYNI olmalı
+  const KOSUL_SURUM = '2026-11-24';
   const GENEL_HATA = 'Beklenmeyen bir hata oldu. Biraz sonra tekrar dene.';
   function trHata(m){ const e = new Error(m); e.turkce = true; return e; }
   function hataMetni(e){
@@ -104,6 +106,8 @@
     if (e && e.turkce) return m;
     if (/Invalid login credentials/i.test(m)) return 'E-posta ya da şifre hatalı.';
     if (dogrulanmadiMi(e)) return 'E-posta adresin henüz doğrulanmadı. Gelen kutundaki bağlantıya tıkla; e-posta gelmediyse aşağıdan yeniden gönder.';
+    // 22-kvkk-onay.sql: onay/beyan/ad eksik kayıt sunucuda reddedilir (GoTrue «Database error saving new user» döndürür)
+    if (/KAYIT_ONAY_EKSIK|Database error saving new user/i.test(m)) return 'Kayıt için ad soyadını yazman ve iki onay kutusunu işaretlemen gerekir.';
     if (/already registered/i.test(m)) return 'Bu e-posta ile zaten bir hesap var. Giriş yap.';
     if (/known to be weak|pwned/i.test(m)) return 'Bu şifre sızdırılmış şifre listelerinde var. Başka bir şifre seç.';
     // supabase/auth internal/api/password.go: MaxPasswordLength = 72 (bcrypt sınırı, bayt)
@@ -131,6 +135,7 @@
     document.querySelectorAll('.sekmeler button').forEach(x => x.classList.toggle('aktif', x === b));
     const kayit = kip === 'kayit';
     $('kayit_alanlari').hidden = !kayit;
+    $('kayit_onay').hidden = !kayit;   // 24.11.2026 KVKK: koşul + kimlik beyanı kutuları yalnız Kayıt ol sekmesinde
     $('baslik').textContent = kayit ? 'Hesap oluştur' : 'Giriş yap';
     // KAYIT ONAYI (G-0015, 06.11.2026, supabase/14-kayit-onayi.sql): kayıt olan e-postasını doğrular, hesap Cenk
     // onaylayınca açılır, 7 günlük demo onay günü başlar (eski «hemen açılır» akışı, 11-deneme.sql, artık geçerli değil)
@@ -171,13 +176,19 @@
     const eposta = $('eposta').value.trim(), sifre = $('sifre').value;
     if (kip === 'kayit' && sifreKuralHatasi(sifre)) { mesaj(sifreKuralHatasi(sifre), 'hata'); $('sifre').focus(); return; }
     if (kip === 'kayit' && sifre !== $('sifre2').value) { mesaj('İki şifre aynı değil. Şifreni iki kutuya da aynı yaz.', 'hata'); $('sifre2').focus(); return; }
+    // 24.11.2026 KVKK (Cenk: «başkasının bilgilerini girip kayıt olmasını da engellememiz lazım»): ad soyad zorunlu,
+    // iki onay kutusu zorunlu. Sunucu da aynısını denetler (22-kvkk-onay.sql kayit_onay_denetle) — form atlanamaz.
+    if (kip === 'kayit' && $('ad').value.trim().length < 3) { mesaj('Ad soyadını yaz.', 'hata'); $('ad').focus(); return; }
+    if (kip === 'kayit' && !$('onay_kosul').checked) { mesaj('Kayıt için Kullanım Koşulları' + "'" + 'nı kabul etmen ve 18 yaşından büyük olman gerekir.', 'hata'); $('onay_kosul').focus(); return; }
+    if (kip === 'kayit' && !$('onay_kimlik').checked) { mesaj('Kayıt için bilgilerin sana ait olduğunu beyan etmen gerekir. Başkası adına kayıt olunamaz.', 'hata'); $('onay_kimlik').focus(); return; }
     $('gonder').disabled = true; mesaj('');
     try {
       const captchaTokenSu = await captchaBekle();
       if (kip === 'kayit') {
         const { data, error } = await sb.auth.signUp({ email: eposta, password: sifre, options: {
           captchaToken: captchaTokenSu,
-          data: { ad: $('ad').value.trim(), firma: $('firma').value.trim() },
+          data: { ad: $('ad').value.trim(), firma: $('firma').value.trim(),
+                  onay: { surum: KOSUL_SURUM, yas18: true, kimlik_beyan: true, zaman: new Date().toISOString() } },
           emailRedirectTo: DONUS_ADRESI } });
         if (error) throw error;
         // Confirm email AÇIK (G-0015): signUp oturum döndürmez; doğrulama bağlantısı siteye döner, supabase-js oturumu
@@ -348,12 +359,41 @@
     setTimeout(function(){ if (s.textContent === ZAYIF_METIN) s.hidden = true; }, 20000);
   }
 
+  // KOŞUL ONAYI (24.11.2026, Cenk: «kvkk … diğer sitelerde uygulanan ne ise öyle olsun»): bu sürümün koşullarını
+  // onaylamamış hesap (eski hesaplar, koşul sürümü değişince) girişte bir kez onaylar. Sunucuya ulaşılamazsa / RPC yoksa
+  // kullanıcı kilitlenmez (onay kaydı sonraki girişte yine sorulur).
+  let KOSUL_OTURUM = null;
+  async function kosulTamam(oturum){
+    let r;
+    try { r = await sb.rpc('kosul_durumum'); } catch (e) { return true; }
+    if (r.error || r.data !== false) { if (r.error) console.warn('[kosul_durumum]', r.error); return true; }
+    KOSUL_OTURUM = oturum;
+    $('ko_kosul').checked = false; $('ko_kimlik').checked = false; $('ko_mesaj').textContent = ''; $('ko_mesaj').className = 'mesaj';
+    $('kosul_modal').hidden = false; perdeKaldir();
+    return false;
+  }
+  function koMesaj(m){ const e = $('ko_mesaj'); e.textContent = m; e.className = 'mesaj goster hata'; }
+  $('ko_form').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    if (!$('ko_kosul').checked || !$('ko_kimlik').checked) { koMesaj('Devam etmek için iki kutuyu da işaretle.'); return; }
+    $('ko_gonder').disabled = true;
+    try {
+      const { error } = await sb.rpc('kosul_onayla', { yas18: true, kimlik_beyan: true });
+      if (error) throw error;
+      $('kosul_modal').hidden = true;
+      lisansaBak(KOSUL_OTURUM);
+    } catch (e) { koMesaj(hataMetni(e)); }
+    finally { $('ko_gonder').disabled = false; }
+  });
+  $('ko_cikis').addEventListener('click', () => { $('kosul_modal').hidden = true; $('cikis').click(); });
+
   async function lisansaBakGovde(oturum){
     if (await mfaGerekli()) {
       goster('bolum_mfa'); mesaj(''); perdeKaldir();
       setTimeout(() => $('mfa_kod').focus(), 0);
       return;
     }
+    if (!(await kosulTamam(oturum))) return;   // 24.11.2026 KVKK: güncel koşullar onaylanmadan devam yok
     goster('bolum_lisans'); mesaj('');
     // §1.6: eski şifre yeni kurala uymuyor (girişte weakPassword) — yalnız bilgi
     if (ZAYIF_SIFRE) zayifSifreBilgisi();

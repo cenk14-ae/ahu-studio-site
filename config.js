@@ -57,7 +57,9 @@ window.AHU_AYAR = {
     // 19.11.2026 — Kaynak Çarpılma Simülatörü (Cenk: «yeni program var sitemize ekleyeceğimiz»)
     { id: 'carpilma', renk: '#ff922b', ad: 'Kaynak Çarpılma Simülatörü', aciklama: 'STEP parçasından dikişleri bulur: ısı ve HAZ, 3B çarpılma, mastar (3-2-1 dayama, kelepçe), WPS / PQR, kaynak haritası ve rapor.', dosyalar: { tek: 'araclar/kaynak-carpilma-simulatoru.html' } },
     // 20.11.2026 — DXF Kulak Tıraşla (Cenk: «köşelerinde kulak gibi uzantılar var, bunu otomatik yapacak program lazım» · «ayrı kart olsun»)
-    { id: 'kulak', renk: '#e599f7', ad: 'DXF Kulak Tıraşla', aciklama: 'Birleşik DXF’leri bırakın: parça köşelerinde çentikten taşan kulakları bulur, çentiği düz L basamağına çevirir; önce / sonra görünümü ve tıraşlı DXF.', dosyalar: { tek: 'araclar/kulak-tirasla.html' } }
+    { id: 'kulak', renk: '#e599f7', ad: 'DXF Kulak Tıraşla', aciklama: 'Birleşik DXF’leri bırakın: parça köşelerinde çentikten taşan kulakları bulur, çentiği düz L basamağına çevirir; önce / sonra görünümü ve tıraşlı DXF.', dosyalar: { tek: 'araclar/kulak-tirasla.html' } },
+    // 25.11.2026 — Chiller Hesap Sihirbazı (Cenk: «rooftop hesap sihirbazı yapmıştık … şimdi chiller hesap sihirbazı yapalım aynı şekilde ama ondan ayrı kart olarak olsun»)
+    { id: 'chiller', renk: '#3bc9db', ad: 'Chiller Hesap Sihirbazı', aciklama: 'Hava soğutmalı chiller adım adım: scroll / vidalı kompresör, BPHE ya da shell & tube evaporatör, lamelli ya da mikrokanal kondenser, sistem dengesi, performans tablosu, SEER ve rapor.', dosyalar: { tek: 'araclar/chiller-hesap-sihirbazi.html' } }
   ]
 };
 // Eski adla okuyan kod için (yönetim sayfasının dosya listesi)

@@ -134,3 +134,8 @@ on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
 insert into public.programlar (id, ad, dosyalar) values
   ('kulak', 'DXF Kulak Tıraşla', '{araclar/kulak-tirasla.html}')
 on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;
+
+-- 17) 25.11.2026 — Chiller Hesap Sihirbazı (hava soğutmalı chiller: kompresör, evaporatör, kondenser, denge, SEER, rapor)
+insert into public.programlar (id, ad, dosyalar) values
+  ('chiller', 'Chiller Hesap Sihirbazı', '{araclar/chiller-hesap-sihirbazi.html}')
+on conflict (id) do update set ad = excluded.ad, dosyalar = excluded.dosyalar;

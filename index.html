@@ -18,7 +18,7 @@
 <title>ALTINAY</title>
 <meta name="description" content="Klima santrali kapak yerleşimi, DXF ve Excel üretimi">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="stil.css?v=20261124a">
+<link rel="stylesheet" href="stil.css?v=20261128a">
 <style>
   #menu{position:fixed;right:12px;bottom:12px;z-index:6;display:flex;gap:6px;opacity:.35;transition:opacity .15s}
   #menu:hover,#menu:focus-within{opacity:1}
@@ -89,12 +89,12 @@
         <label for="eposta">E-posta</label>
         <input id="eposta" type="email" autocomplete="email" required maxlength="254">
         <label for="sifre">Şifre</label>
-        <!-- minlength: Giriş sekmesinde 8 (eski şifreli hesaplar girebilsin), Kayıt ol sekmesinde JS 10 yapar (G-0014 §1.6) -->
-        <input id="sifre" type="password" autocomplete="current-password" required minlength="8" maxlength="72">
+        <!-- 28.11.2026 — Cenk: «şifreyi de 6 hane yeterli 10 ile zorlama sadece numara ile de yapabilsinler» → iki sekmede de en az 6 -->
+        <input id="sifre" type="password" autocomplete="current-password" required minlength="6" maxlength="72">
         <!-- 06.11.2026 — Cenk: «kayıt olurken de 2 kere yazsın yanlış yazma ihtimaline karşı» (yalnız Kayıt ol sekmesinde) -->
         <div id="sifre_tekrar_alan" hidden>
           <label for="sifre2">Şifre (tekrar)</label>
-          <input id="sifre2" type="password" autocomplete="new-password" minlength="10" maxlength="72">
+          <input id="sifre2" type="password" autocomplete="new-password" minlength="6" maxlength="72">
         </div>
         <!-- 24.11.2026 — KVKK + KULLANIM KOŞULLARI (Cenk: «başkasının bilgilerini girip kayıt olmasını da engellememiz lazım»;
              yalnız 18 yaş ve üstü). İki kutu zorunlu; sunucu da denetler (supabase/22-kvkk-onay.sql kayit_onay_denetle). -->
@@ -125,13 +125,13 @@
     <!-- YENİ ŞİFRE (e-postadaki bağlantıdan gelince) -->
     <section id="bolum_yeni" hidden>
       <h1>Yeni şifre belirle</h1>
-      <p class="aciklama">En az 10 karakter; büyük harf, küçük harf ve rakam içermeli (İngilizce harflerle: A–Z, a–z; Ç, Ş, İ gibi harfler sayılmaz).</p>
+      <p class="aciklama">En az 6 karakter; yalnız rakam da olabilir.</p>
       <form id="form_yeni">
         <label for="yeni_sifre">Yeni şifre</label>
-        <input id="yeni_sifre" type="password" autocomplete="new-password" required minlength="10" maxlength="72">
+        <input id="yeni_sifre" type="password" autocomplete="new-password" required minlength="6" maxlength="72">
         <!-- 06.11.2026 — Cenk: «yeni şifre belirle ekranına da tekrar kutusu ekle» -->
         <label for="yeni_sifre2">Yeni şifre (tekrar)</label>
-        <input id="yeni_sifre2" type="password" autocomplete="new-password" required minlength="10" maxlength="72">
+        <input id="yeni_sifre2" type="password" autocomplete="new-password" required minlength="6" maxlength="72">
         <button class="dugme tam" type="submit">Kaydet</button>
       </form>
     </section>
@@ -242,12 +242,12 @@
 <div id="sifre_modal" hidden role="dialog" aria-modal="true" aria-labelledby="sd_baslik">
   <form class="kart" id="sd_form">
     <div class="bv-ust"><h1 id="sd_baslik">Şifre değiştir</h1><button type="button" id="sd_kapat" aria-label="Kapat">✕</button></div>
-    <p class="aciklama" id="sd_kim">En az 10 karakter; büyük harf, küçük harf ve rakam içermeli (İngilizce harflerle: A–Z, a–z; Ç, Ş, İ gibi harfler sayılmaz).</p>
+    <p class="aciklama" id="sd_kim">En az 6 karakter; yalnız rakam da olabilir.</p>
     <input type="email" id="sd_eposta" autocomplete="username" hidden>
     <label for="sd_yeni">Yeni şifre</label>
-    <input id="sd_yeni" type="password" autocomplete="new-password" required minlength="10" maxlength="72">
+    <input id="sd_yeni" type="password" autocomplete="new-password" required minlength="6" maxlength="72">
     <label for="sd_tekrar">Yeni şifre (tekrar)</label>
-    <input id="sd_tekrar" type="password" autocomplete="new-password" required minlength="10" maxlength="72">
+    <input id="sd_tekrar" type="password" autocomplete="new-password" required minlength="6" maxlength="72">
     <button class="dugme tam" id="sd_gonder" type="submit">Şifreyi değiştir</button>
     <div class="mesaj" id="sd_mesaj" role="status"></div>
   </form>
@@ -266,6 +266,27 @@
     <button class="dugme tam" id="ko_gonder" type="submit">Onayla ve devam et</button>
     <p class="alt-not"><button class="baglanti" id="ko_cikis" type="button">Çıkış</button></p>
     <div class="mesaj" id="ko_mesaj" role="status"></div>
+  </form>
+</div>
+
+<!-- E-POSTA DOĞRULAMA ZORUNLU (28.11.2026) — Cenk: «mailini doğrulamayanları maili doğrulamaya zorla ekranda büyük banner
+     çıksın herşeyi kaplasın». lisanslar.eposta_dogrulandi boş hesapta girişten sonra tüm ekranı kaplar, kapatılamaz;
+     kod e-postaya gider (eposta_kodu_gonder), doğrulanınca (eposta_kodu_dogrula, supabase/23-eposta-zorunlu.sql) kalkar.
+     Metinler JS'te textContent ile basılır (index.js EPOSTA ZORUNLU). -->
+<div id="eposta_zorunlu" hidden role="alertdialog" aria-modal="true" aria-labelledby="ez_baslik" aria-describedby="ez_metin">
+  <form class="kart" id="ez_form" autocomplete="off">
+    <div class="ez-serit">Hesabını kullanmak için e-posta doğrulaması gerekli</div>
+    <h1 id="ez_baslik">E-posta adresini doğrula</h1>
+    <p class="aciklama" id="ez_metin"><b id="ez_eposta"></b> adresine 6 haneli kod gönderelim; kodu aşağıya yaz.
+      <span class="ez-bilgi" tabindex="0" title="E-posta gelmezse gereksiz (spam) klasörüne bak. Kod 15 dakika geçerli, 5 yanlış denemede düşer.">ⓘ</span></p>
+    <label for="ez_kod">Doğrulama kodu</label>
+    <div class="bv-kod-satir">
+      <input id="ez_kod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" placeholder="6 haneli kod">
+      <button class="dugme ikincil" id="ez_kod_gonder" type="button">Kod gönder</button>
+    </div>
+    <button class="dugme tam" id="ez_dogrula" type="submit">Doğrula</button>
+    <div class="mesaj" id="ez_mesaj" role="status"></div>
+    <p class="alt-not"><button class="baglanti" id="ez_cikis" type="button">Çıkış yap</button></p>
   </form>
 </div>
 
@@ -337,7 +358,7 @@
 <script src="qr-kod.js?v=20261112a"></script>
 <script src="qr-giris.js?v=20261112a"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
-<script src="index.js?v=20261124a"></script>
+<script src="index.js?v=20261128a"></script>
 <script src="cerez-bildirimi.js?v=20261124a"></script>
 <script src="index-tanitim.js?v=20261108a"></script>
 </body>

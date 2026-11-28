@@ -121,10 +121,13 @@ Veritabanı kayıtları `supabase/15…19` (taslaklar ve geri alma dosyaları: `
   Taslak 05 (`yonetici_mi` için aal2 şartı) uygulanınca kayıt `supabase/20-yonetici-mfa.sql` olarak eklenir; o zamandan
   sonra kodsuz (aal1) oturum Yönetim'e giremez. Telefon kaybolur ve yedek anahtar yoksa: SQL Editor'da taslak 05'in
   `.geri.sql`'ini çalıştır (SQL Editor MFA istemez), Authentication → Users → hesabın → Factors'tan eski faktörü sil.
-- **Şifre kuralı:** site yeni şifrelerde (kayıt, şifre sıfırlama, Şifre değiştir) en az 10 karakter, küçük + büyük harf + rakam
-  ister (tarayıcıda denetlenir; girişte eski şifreler geçer). Sunucu tarafı Supabase panel ayarıdır (`uygula.mjs --panel`, ayrı onay):
-  uygulanınca aynı kural sunucuda da zorunlu olur, şifre değişiminde yeniden doğrulama açılır ve eski şifreyle giren kullanıcıya
-  site «Şifren yeni kurallara uymuyor» bilgisini verir (giriş sürer).
+- **Şifre kuralı (28.11.2026, Cenk: «6 hane yeterli … sadece numara ile de yapabilsinler»):** site yeni şifrelerde (kayıt,
+  şifre sıfırlama, Şifre değiştir) yalnız **en az 6, en çok 72 karakter** ister; harf/rakam şartı yok (yalnız rakam olabilir).
+  Giriş sekmesi de en az 6 kabul eder. Sunucu tarafı Supabase Auth ayarıdır (Management API `PATCH /v1/projects/{ref}/config/auth`):
+  `password_min_length: 6`, `password_required_characters: ""` — ikisi aynı anda yayınlanmalı, yoksa sunucu eski kurala göre
+  6 haneli şifreyi reddeder. (Önceki kural: en az 10, küçük + büyük harf + rakam — G-0014 §1.6.)
+- **E-posta doğrulaması zorunlu (28.11.2026):** `lisanslar.eposta_dogrulandi` boş hesap girişten sonra tam ekran katmanda durur
+  (kod gönder → 6 haneli kod → `eposta_kodu_dogrula`, `supabase/23-eposta-zorunlu.sql`); doğrulanınca akış sürer. Yönetici dahil.
 - **Data API → Exposed schemas** listesine `net` ya da `vault` **EKLENMEZ** (yalnız `public` ve `graphql_public`).
 
 ## Kullanıcı verisi (08.10.2026)

@@ -60,18 +60,17 @@
     if (c) c.hidden = !acik; if (p) p.hidden = !acik;
     try { if (window.KozmikArkaPlan) acik ? KozmikArkaPlan.oynat() : KozmikArkaPlan.duraklat(); } catch (e) {}
   }
-  // ŞİFRE KURALI (G-0014 §1.6; Supabase şifre politikası `uygula.mjs --panel`: en az 10, küçük + büyük harf + rakam).
-  // Yalnız YENİ şifrelerde geçerli; eski şifreyle giriş sürer (Giriş sekmesinde minlength 8 kalır).
-  const SIFRE_EN_AZ = 10;
-  // G-0014 B3: kural yalnız İngilizce (ASCII) harfleri sayar — metin bunu açıkça söyler (Cenk 07.11.2026 onayı)
-  const SIFRE_KURAL = 'En az 10 karakter; büyük harf, küçük harf ve rakam içermeli (İngilizce harflerle: A–Z, a–z; Ç, Ş, İ gibi harfler sayılmaz).';
-  const SIFRE_HATA = 'Şifre en az 10 karakter olmalı ve büyük harf, küçük harf, rakam içermeli (İngilizce harflerle: A–Z, a–z; Ç, Ş, İ gibi harfler sayılmaz).';
-  // Yeni şifre kuralı tarayıcıda da denetlenir: ekrandaki kural metni, panel ayarı (`--panel`) uygulanmadan önce de doğru olsun.
-  // Karakter kümeleri Supabase password_required_characters ile aynı: a-z : A-Z : 0-9 (ASCII; ç/ş/ğ gibi harfler sayılmaz).
-  // Kaynak: https://supabase.com/docs/guides/auth/password-security
+  // ŞİFRE KURALI — 28.11.2026, Cenk: «şifreyi de 6 hane yeterli 10 ile zorlama sadece numara ile de yapabilsinler».
+  // En az 6 karakter, karakter sınıfı şartı YOK (yalnız rakam olabilir); en çok 72 (maxlength + sunucu iletisi, bcrypt sınırı).
+  // Yalnız YENİ şifrelerde denetlenir (kayıt, şifre sıfırlama, Şifre değiştir). Sunucu tarafı Supabase Auth ayarı:
+  // password_min_length 6, password_required_characters "" (Management API PATCH /v1/projects/{ref}/config/auth).
+  // Önceki kural (G-0014 §1.6): en az 10, küçük + büyük harf + rakam. Kaynak: https://supabase.com/docs/guides/auth/password-security
+  const SIFRE_EN_AZ = 6;
+  const SIFRE_KURAL = 'En az 6 karakter; yalnız rakam da olabilir.';
+  const SIFRE_HATA = 'Şifre en az 6 karakter olmalı.';
   function sifreKuralHatasi(s){
     s = String(s || '');
-    if (s.length < SIFRE_EN_AZ || !/[a-z]/.test(s) || !/[A-Z]/.test(s) || !/[0-9]/.test(s)) return SIFRE_HATA;
+    if (s.length < SIFRE_EN_AZ) return SIFRE_HATA;
     return '';
   }
   // «Email not confirmed» → supabase-js hata kodu email_not_confirmed (Auth: doğrulanmamış hesap giriş yapamaz)
@@ -144,7 +143,7 @@
     $('aciklama').hidden = kayit;
     $('gonder').textContent = kayit ? 'Kayıt ol' : 'Giriş yap';
     $('sifre').autocomplete = kayit ? 'new-password' : 'current-password';
-    $('sifre').minLength = kayit ? SIFRE_EN_AZ : 8;   // yeni şifre kurala uyar; girişte eski şifreler geçer
+    $('sifre').minLength = SIFRE_EN_AZ;   // 28.11.2026: iki sekmede de 6 (6 haneli şifreyle girilebilsin)
     $('sifre_tekrar_alan').hidden = !kayit; $('sifre2').required = kayit;
     if (!kayit) $('sifre2').value = '';
     mesaj('');
@@ -387,6 +386,67 @@
   });
   $('ko_cikis').addEventListener('click', () => { $('kosul_modal').hidden = true; $('cikis').click(); });
 
+  // E-POSTA ZORUNLU (28.11.2026) — Cenk: «mailini doğrulamayanları maili doğrulamaya zorla ekranda büyük banner çıksın
+  // herşeyi kaplasın». Kanıt lisanslar.eposta_dogrulandi (basvuru_durumum().dogrulandi; 13/17-*.sql). Doğrulanmamış hesapta
+  // (yönetici dahil) tam ekran katman çıkar, kapatılamaz; lisans / ana sayfa / program akışı katman kalkana dek DURUR.
+  // Kod: eposta_kodu_gonder (dakikada 1, saatte 5, günde 10) → eposta_kodu_dogrula (supabase/23-eposta-zorunlu.sql).
+  // Sunucuya ulaşılamazsa / RPC yoksa kullanıcı kilitlenmez (kosulTamam gibi) — sunucu tarafı kapı dosya_izni'dir.
+  let EPOSTA_KILIT = false, EZ_OTURUM = null, ezSayac = null;
+  function ezMesaj(m, tur){ const e = $('ez_mesaj'); e.textContent = m || ''; e.className = 'mesaj' + (m ? ' goster ' + (tur || 'bilgi') : ''); }
+  async function epostaTamam(oturum){
+    let r;
+    try { r = await sb.rpc('basvuru_durumum'); } catch (e) { console.warn('[basvuru_durumum]', e); return true; }
+    if (r.error || !r.data || r.data.dogrulandi !== false) { if (r.error) console.warn('[basvuru_durumum]', r.error); EPOSTA_KILIT = false; return true; }
+    EPOSTA_KILIT = true; EZ_OTURUM = oturum;
+    const m = $('eposta_zorunlu');
+    if (m.hidden) {
+      $('ez_eposta').textContent = oturum.user.email || 'hesabındaki';
+      $('ez_kod').value = ''; ezMesaj('');
+      m.hidden = false;
+    }
+    perdeKaldir();
+    setTimeout(() => $('ez_kod').focus(), 0);
+    return false;
+  }
+  function ezKaldir(){
+    EPOSTA_KILIT = false; BV_DOGRULANDI = true;
+    clearInterval(ezSayac); $('ez_kod_gonder').textContent = 'Kod gönder'; $('ez_kod_gonder').disabled = false;
+    $('eposta_zorunlu').hidden = true; $('ez_kod').value = ''; ezMesaj('');
+    if (window.EtkinlikKaydi) try { EtkinlikKaydi.olay('E-postasını doğruladı'); } catch (e) {}
+    const o = EZ_OTURUM; EZ_OTURUM = null;
+    sb.auth.getSession().then(r => lisansaBak((r.data && r.data.session) || o), () => lisansaBak(o));
+  }
+  $('ez_kod_gonder').addEventListener('click', async () => {
+    const b = $('ez_kod_gonder'); b.disabled = true;
+    let r;
+    try { r = await sb.rpc('eposta_kodu_gonder'); } catch (e) { r = { error: e }; }
+    if (r.error) { ezMesaj(hataMetni(r.error), 'hata'); b.disabled = false; return; }
+    if (r.data === 'zaten') { ezKaldir(); return; }
+    ezMesaj('Kod gönderildi. 15 dakika geçerli.', 'bilgi');
+    $('ez_kod').focus();
+    // aynı dakika içinde yeniden istenmesin (sunucu da reddeder) — başvuru penceresindeki bv_kod_gonder gibi
+    let k = 60; b.textContent = 'Tekrar (' + k + ')';
+    clearInterval(ezSayac);
+    ezSayac = setInterval(() => { k--; if (k > 0) { b.textContent = 'Tekrar (' + k + ')'; return; }
+      clearInterval(ezSayac); b.textContent = 'Kodu yeniden gönder'; b.disabled = false; }, 1000);
+  });
+  $('ez_form').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const kod = $('ez_kod').value.trim();
+    if (!/^\d{6}$/.test(kod)) { ezMesaj('E-postana gelen 6 haneli kodu yaz.', 'hata'); $('ez_kod').focus(); return; }
+    $('ez_dogrula').disabled = true;
+    try {
+      const { data, error } = await sb.rpc('eposta_kodu_dogrula', { kod });
+      if (error) throw error;
+      if (data && data.tamam) { ezKaldir(); return; }
+      ezMesaj((data && data.mesaj) || 'Kod doğrulanamadı.', 'hata'); $('ez_kod').select();
+    } catch (e) { ezMesaj(hataMetni(e), 'hata'); }
+    finally { $('ez_dogrula').disabled = false; }
+  });
+  $('ez_cikis').addEventListener('click', cikis);
+  // ⓘ: dokunmatik ekranda title görünmez → dokununca açıklama ileti satırında açılır (memory: aciklama-bilgi-ikonu)
+  document.querySelector('#eposta_zorunlu .ez-bilgi').addEventListener('click', e => ezMesaj(e.currentTarget.title, 'bilgi'));
+
   async function lisansaBakGovde(oturum){
     if (await mfaGerekli()) {
       goster('bolum_mfa'); mesaj(''); perdeKaldir();
@@ -394,6 +454,7 @@
       return;
     }
     if (!(await kosulTamam(oturum))) return;   // 24.11.2026 KVKK: güncel koşullar onaylanmadan devam yok
+    if (!(await epostaTamam(oturum))) return;  // 28.11.2026: e-postası doğrulanmamış hesap katmanda durur (yönetici dahil)
     goster('bolum_lisans'); mesaj('');
     // §1.6: eski şifre yeni kurala uymuyor (girişte weakPassword) — yalnız bilgi
     if (ZAYIF_SIFRE) zayifSifreBilgisi();
@@ -441,6 +502,7 @@
       oturumIzle(oturum);
     }
 
+    if (EPOSTA_KILIT) return;   // 28.11.2026: doğrulama katmanı açıkken kart / program yok
     const prm = new URLSearchParams(location.search);
     // Görebildiği programlar: yönetici hepsini, kullanıcı yönetimde açılanları (d.programlar).
     // Asıl kapı depo kuralıdır (dosya_izni); bu süzgeç yalnız ekranda olmayanı göstermemek için.
@@ -710,6 +772,92 @@
   }
   $('oturum_yeniden').addEventListener('click', () => location.reload());
   $('oturum_cikis').addEventListener('click', async () => { await sb.auth.signOut({ scope: 'local' }); location.reload(); });
+
+  // ---------------- OTURUM TAZELEME (28.11.2026) ----------------
+  // Cenk: «oturum düzeltmesini de yap». Sorun: bazı kullanıcılar AHU Studio'da «Oturum süresi doldu, sayfayı yenileyin»
+  // görüyordu. Program (blob iframe) erişim belirtecini localStorage'daki sb-<ref>-auth-token'dan okur; JWT 3600 sn.
+  // supabase-js 2.119 kendi otomatik yenilemesini sekme gizliyken durdurur (GoTrueClient _onVisibilityChanged →
+  // _stopAutoRefresh), uykuda hiç çalışmaz → 1 saatten uzun ayrılıp dönen kullanıcının ilk isteği eski belirteçle gider.
+  // Çözüm: (a) kendi zamanlayıcımız (60 sn; gizli sekmede tarayıcı zincirli zamanlayıcıyı en az dakikada bir çalıştırır)
+  // ve görünür olma / odak / çevrimiçi / pageshow olaylarında belirtecin kalan süresine bakar, 10 dk'dan az kaldıysa
+  // refreshSession(); aralık beklenenden çok uzunsa (uyku dönüşü) hemen yeniler. (b) Programların köprüsü
+  // window.__ahuOturumYenile() → Promise<{token, neden}> (sözleşme: AHU ince istemcisi 401'de window.top üzerinden çağırır,
+  // isteği bir kez yeniden dener). Aynı anda tek yenileme: söz paylaşılır. Yenileme kesin başarısızsa (yenileme belirteci
+  // geçersiz — girişte signOut({scope:'others'}) öteki cihazınkini düşürür) Türkçe ileti; ham sunucu metni basılmaz.
+  const TAZE_ESIK_SN = 600, TAZE_ARALIK_MS = 60000, UYKU_ESIK_MS = 150000;
+  let tazeSozu = null, tazeSon = Date.now(), tazeUyarisi = false;
+  const tazeKalanSn = o => (o && o.expires_at ? o.expires_at - Date.now() / 1000 : -1);
+  // neden: 'ag' (bağlantı / sunucu geçici) | 'baska-cihaz' (yenileme belirteci ya da oturum sunucuda yok) | 'oturum-yok'
+  function tazeNeden(e){
+    const m = (e && e.message) || '', k = (e && e.code) || '', ad = (e && e.name) || '';
+    if (ad === 'AuthRetryableFetchError' || /Failed to fetch|NetworkError|Load failed|timed? ?out/i.test(m) ||
+        (e && e.status === 0) || (e && e.status >= 500) || navigator.onLine === false) return 'ag';
+    if (k === 'refresh_token_not_found' || k === 'session_not_found' || /Refresh Token Not Found|session.*not.*(found|exist)/i.test(m)) return 'baska-cihaz';
+    return 'oturum-yok';
+  }
+  // Yenileme isteği TEKTİR: aynı anda gelen çağrılar (zamanlayıcı, olaylar, köprü) aynı sözü bekler
+  function tazeYenile(){
+    if (!tazeSozu) {
+      tazeSozu = (async () => {
+        try {
+          const { data, error } = await sb.auth.refreshSession();
+          if (error) return { token: null, neden: tazeNeden(error), hata: error };
+          const s = data && data.session;
+          return s && s.access_token ? { token: s.access_token, neden: null } : { token: null, neden: 'oturum-yok' };
+        } catch (e) { return { token: null, neden: tazeNeden(e), hata: e }; }
+      })().finally(() => { tazeSozu = null; });
+    }
+    return tazeSozu;
+  }
+  // esikSn: belirteç bundan uzun geçerliyse olduğu gibi döner; zorla: süreye bakmadan yenile (uyku dönüşü)
+  async function oturumTazele(esikSn, zorla){
+    const iceride = acik || !$('ana_sayfa').hidden;   // yenileme başarısızsa SIGNED_OUT acik'i düşürür — önce bak
+    let r;
+    try {
+      const { data, error } = await sb.auth.getSession();   // süresi geçmişse supabase-js burada kendisi yenileyebilir
+      const s = data && data.session;
+      if (error) r = { token: null, neden: tazeNeden(error), hata: error };
+      else if (!s) return { token: null, neden: 'oturum-yok' };   // giriş ekranı / çıkış yapılmış: sessiz
+      else if (!zorla && tazeKalanSn(s) > esikSn) r = { token: s.access_token, neden: null };
+      else r = await tazeYenile();
+    } catch (e) { r = { token: null, neden: tazeNeden(e), hata: e }; }
+    tazeSonucu(r, iceride);
+    return r;
+  }
+  function tazeSonucu(r, iceride){
+    const s = $('serit');
+    if (r.token) { if (tazeUyarisi) { tazeUyarisi = false; s.hidden = true; } return; }
+    if (r.hata) console.warn('[oturum tazeleme]', r.neden, r.hata && (r.hata.code || r.hata.name || r.hata.status));
+    if (!iceride) return;
+    if (r.neden === 'baska-cihaz') { oturumKapandi(); return; }   // tek oturum akışı: «Oturum kapatıldı» perdesi
+    tazeUyarisi = true; s.style.cursor = ''; s.onclick = null;
+    s.textContent = r.neden === 'ag'
+      ? 'Sunucuya ulaşılamadı; oturum tazelenemedi. Bağlantı gelince kendiliğinden yeniden denenecek.'
+      : 'Oturumun sona erdi. Projeni kaydet, sonra sayfayı yenileyip yeniden giriş yap.';
+    s.hidden = false;
+  }
+  setInterval(() => {
+    const n = Date.now(), uyku = n - tazeSon > UYKU_ESIK_MS;   // zamanlayıcı çok gecikti: bilgisayar uykudan döndü
+    tazeSon = n;
+    oturumTazele(TAZE_ESIK_SN, uyku);
+  }, TAZE_ARALIK_MS);
+  const tazeOlay = () => { if (!document.hidden) oturumTazele(TAZE_ESIK_SN, false); };
+  document.addEventListener('visibilitychange', tazeOlay);
+  ['focus', 'pageshow'].forEach(o => window.addEventListener(o, tazeOlay));
+  window.addEventListener('online', () => oturumTazele(TAZE_ESIK_SN, false));
+  // KÖPRÜ (sözleşme sabit): asla reddetmez; başarıda {token, neden:null}, değilse {token:null, neden}
+  // Program köprüyü 401 aldıktan sonra çağırır → yerel saat «geçerli» dese de ZORLA yenilenir (saat kayması / sunucuda
+  // düşmüş oturum: aynı belirteç dönerse 401 sürerdi — kontrolcü 28.11.2026). Eşzamanlı çağrılar tazeSozu'nu paylaşır.
+  // Siber güvenlik önerisi (28.11.2026): zorla yenileme en çok 30 sn'de bir (arada eşik kuralı — /token hız sınırı girişle
+  // ortak), ağ asılı kalırsa 15 sn sonra {neden:'ag'} — program isteği dakikalarca beklemesin.
+  let kopruZorlaSon = 0;
+  window.__ahuOturumYenile = function(){
+    const zorla = Date.now() - kopruZorlaSon > 30000;
+    if (zorla) kopruZorlaSon = Date.now();
+    const is = oturumTazele(60, zorla).then(r => ({ token: r.token || null, neden: r.token ? null : (r.neden || 'oturum-yok') }),
+      () => ({ token: null, neden: 'ag' }));
+    return Promise.race([is, new Promise(c => setTimeout(() => c({ token: null, neden: 'ag' }), 15000))]);
+  };
 
   // Program yüklenince (aynı köken: blob, program-acici.html açtı — G-0016):
   //  · ANTET: AHU Studio'nun Excel antetindeki ÇİZEN hücresi kabuğun AHU_CIZEN'ini okur

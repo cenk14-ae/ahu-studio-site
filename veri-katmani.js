@@ -13,6 +13,55 @@
   'use strict';
   var W = window;
   var KAYNAK = document.currentScript ? document.currentScript.textContent : '';
+
+  // ---------------- PDF.JS KALKANI (28.11.2026) ----------------
+  // Siber güvenlik bulgusu: programlar pdf.js 3.x yükler (CDN 3.11.174 / gömülü). CVE-2024-4367 (GHSA-wgrm-67xf-hhpq):
+  // pdf.js ≤ 4.1.392'de zararlı bir PDF'in yazı tipiyle sayfada keyfi JS çalıştırılabilir. Resmî geçici çözüm:
+  // getDocument'a isEvalSupported:false. Cenk «pdf açığını düzelt». Program DEĞİŞMEDEN: pdf.js (UMD) kendini
+  // globalThis.pdfjsLib / globalThis["pdfjs-dist/build/pdf"]'a yazar → bu atama yakalanır, getDocument sarılır.
+  (function () {
+    if (W.__VK_PDF_KALKAN) return;
+    W.__VK_PDF_KALKAN = true;
+    function parametre(src) {
+      var p;
+      if (typeof src === 'string' || (typeof URL !== 'undefined' && src instanceof URL)) p = { url: src };
+      else if (src && typeof src === 'object' && src.byteLength !== undefined) p = { data: src };   // başka çerçevenin dizisi de (pdf.js'in kendi denetimi)
+      else p = Object.assign({}, src || {});
+      p.isEvalSupported = false;
+      return p;
+    }
+    function sar(lib) {
+      try {
+        if (!lib || (typeof lib !== 'object' && typeof lib !== 'function') || lib.__vkPdfKalkan) return lib;
+        var gd = lib.getDocument;
+        if (typeof gd !== 'function') return lib;
+        var yeni = function (src) { return gd.call(lib, parametre(src)); };
+        var d = Object.getOwnPropertyDescriptor(lib, 'getDocument');
+        if (!d || d.configurable || d.writable) {     // doğrudan değiştirilebiliyor
+          Object.defineProperty(lib, 'getDocument', { value: yeni, writable: true, configurable: true, enumerable: true });
+          Object.defineProperty(lib, '__vkPdfKalkan', { value: true });
+          return lib;
+        }
+        if (d.get) {                                    // webpack dışa aktarımı (değiştirilemez erişimci) → vekil
+          return new Proxy(lib, { get: function (t, k) {
+            if (k === 'getDocument') return yeni;
+            if (k === '__vkPdfKalkan') return true;
+            return Reflect.get(t, k);
+          } });
+        }
+      } catch (e) { /* kalkan kurulamadı — program yine çalışır */ }
+      try { console.warn('[veri katmanı] pdf.js kalkanı kurulamadı'); } catch (e) {}
+      return lib;
+    }
+    ['pdfjsLib', 'pdfjs-dist/build/pdf'].forEach(function (ad) {
+      var deger = sar(W[ad]);
+      try {
+        Object.defineProperty(W, ad, { configurable: true, enumerable: true,
+          get: function () { return deger; }, set: function (v) { deger = sar(v); } });
+      } catch (e) { /* tanımlanamadıysa geç */ }
+    });
+  })();
+
   var AYAR = W.__VK_AYAR;
   if (!AYAR || !AYAR.ns || W.__VK_KURULDU) return;
   W.__VK_KURULDU = true;
